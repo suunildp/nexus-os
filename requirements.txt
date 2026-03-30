@@ -1,5 +1,6 @@
 streamlit
-numpy
-pandas
-matplotlib
-scikit-learn
+python-dotenv
+requests
+anthropic
+google-generativeai
+openai
