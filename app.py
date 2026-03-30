@@ -1,29 +1,33 @@
 import streamlit as st
 
-# Title of the application
-st.title('Nexus OS Streamlit Application')
+# Function to handle onboarding
 
-# Section for Layer 1 Onboarding
-st.header('Layer 1 Onboarding')
+def onboarding():
+    st.header("Welcome to Nexus OS")
+    st.subheader("Let's get started with onboarding.")
+    goal = st.text_input("What is your goal for using Nexus OS?")
+    output_format = st.selectbox("Select your desired output format:", ["JSON", "XML", "Text"])
+    optimization_pref = st.selectbox("Select your optimization preference:", ["Speed", "Accuracy", "Cost"])
+    allowed_connectors = st.multiselect("Select allowed connectors:", ["Perplexity", "Gemini", "Claude", "ChatGPT", "Julius AI", "Canva", "Gamma AI", "AIPPT", "NotebookLM", "Grok", "Merlin"])
+    if st.button("Confirm"): 
+        st.success("Onboarding completed!\n\n" + 
+                f"Goal: {goal}\n" + 
+                f"Output Format: {output_format}\n" + 
+                f"Optimization Preference: {optimization_pref}\n" + 
+                f"Allowed Connectors: {', '.join(allowed_connectors)}")
 
-# Onboarding form inputs
-onboarding_input = st.text_input('Enter onboarding details:')
-if st.button('Submit Onboarding'):
-    st.success('Onboarding submitted!')
+# Main function of the Streamlit app
 
-# Section for Connector Management
-st.header('Connector Management')
+def main():
+    st.set_page_config(page_title="Nexus OS", layout="wide")
+    if 'onboarded' not in st.session_state:
+        st.session_state['onboarded'] = False
 
-# Connector selection and management
-connector_options = ['Connector 1', 'Connector 2', 'Connector 3']
-selected_connector = st.selectbox('Choose a connector:', connector_options)
-if st.button('Manage Connector'):
-    st.success(f'Managing {selected_connector}')
+    if not st.session_state['onboarded']:
+        onboarding() 
+        st.session_state['onboarded'] = True
+    else:
+        st.write("Welcome back to Nexus OS!")
 
-# Guardrails section
-st.header('Guardrails')
-
-# Display and manage guardrails
-guardrail_input = st.text_area('Specify guardrail conditions:')
-if st.button('Set Guardrails'):
-    st.success('Guardrails set!')
+if __name__ == '__main__':
+    main()
