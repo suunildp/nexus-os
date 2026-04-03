@@ -1,6 +1,6 @@
-streamlit
-python-dotenv
-requests
+streamlit==1.36.0
+requests==2.32.3
+python-dotenv==1.0.1
 anthropic
 google-generativeai
 openai
