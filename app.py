@@ -48,6 +48,14 @@ st.markdown("""
     color: #fbbf24;
     font-weight: 600;
 }
+.status-error {
+    color: #f87171;
+    font-weight: 600;
+}
+.status-neutral {
+    color: #93c5fd;
+    font-weight: 600;
+}
 .connector-row {
     padding: 0.6rem 0;
     border-bottom: 1px solid rgba(120,120,120,0.15);
@@ -100,20 +108,20 @@ TOOL_ALIAS_MAP = {
 }
 
 CONNECTOR_REGISTRY = {
-    "Perplexity": {"auth_type": "API Key", "connected": False},
-    "Gemini": {"auth_type": "API Key", "connected": False},
-    "Claude": {"auth_type": "API Key", "connected": False},
-    "ChatGPT": {"auth_type": "API Key", "connected": False},
-    "Julius AI": {"auth_type": "API Key", "connected": False},
-    "Canva": {"auth_type": "OAuth / API", "connected": False},
-    "Gamma AI": {"auth_type": "OAuth / API", "connected": False},
-    "AIPPT": {"auth_type": "OAuth / API", "connected": False},
-    "NotebookLM": {"auth_type": "OAuth / API", "connected": False},
-    "Grok": {"auth_type": "API Key", "connected": False},
-    "Merlin": {"auth_type": "API Key", "connected": False}
+    "Perplexity": {"auth_type": "API Key", "connected": False, "health": "not_connected"},
+    "Gemini": {"auth_type": "API Key", "connected": False, "health": "not_connected"},
+    "Claude": {"auth_type": "API Key", "connected": False, "health": "not_connected"},
+    "ChatGPT": {"auth_type": "API Key", "connected": False, "health": "not_connected"},
+    "Julius AI": {"auth_type": "API Key", "connected": False, "health": "not_connected"},
+    "Canva": {"auth_type": "OAuth / API", "connected": False, "health": "not_connected"},
+    "Gamma AI": {"auth_type": "OAuth / API", "connected": False, "health": "not_connected"},
+    "AIPPT": {"auth_type": "OAuth / API", "connected": False, "health": "not_connected"},
+    "NotebookLM": {"auth_type": "OAuth / API", "connected": False, "health": "not_connected"},
+    "Grok": {"auth_type": "API Key", "connected": False, "health": "not_connected"},
+    "Merlin": {"auth_type": "API Key", "connected": False, "health": "not_connected"}
 }
 
-for key, value in {
+default_state = {
     "onboarded": False,
     "goal": "",
     "output_format": "Text",
@@ -127,8 +135,11 @@ for key, value in {
     "connector_registry": CONNECTOR_REGISTRY.copy(),
     "perplexity_key_session": "",
     "perplexity_result": "",
-    "perplexity_citations": []
-}.items():
+    "perplexity_citations": [],
+    "perplexity_status_message": ""
+}
+
+for key, value in default_state.items():
     if key not in st.session_state:
         st.session_state[key] = value
 
@@ -179,23 +190,65 @@ def parse_tool_identifiers(raw_text):
 def get_perplexity_api_key():
     env_key = os.environ.get("PERPLEXITY_API_KEY", "").strip()
     if env_key:
-        return env_key, "railway"
+        return env_key, "saved"
     session_key = st.session_state.perplexity_key_session.strip()
     if session_key:
-        return session_key, "session"
+        return session_key, "temporary"
     return "", ""
 
-def validate_perplexity_key(key):
-    return key.startswith("pplx_") or key.startswith("pxl_") or len(key) > 20
+def validate_perplexity_key_format(key):
+    return (key.startswith("pplx_") or key.startswith("pxl_")) and len(key) >= 20
 
-def connect_perplexity():
+def set_perplexity_health(connected, health, message):
+    st.session_state.connector_registry["Perplexity"]["connected"] = connected
+    st.session_state.connector_registry["Perplexity"]["health"] = health
+    st.session_state.perplexity_status_message = message
+
+def disconnect_perplexity():
+    st.session_state.perplexity_key_session = ""
+    set_perplexity_health(False, "not_connected", "Perplexity has been disconnected from this session.")
+
+def verify_perplexity_connection():
     key, source = get_perplexity_api_key()
+
     if not key:
-        return False, "No Perplexity API key found. Add it in Railway Variables or enter it in the masked field."
-    if not validate_perplexity_key(key):
-        return False, "Perplexity API key format looks invalid."
-    st.session_state.connector_registry["Perplexity"]["connected"] = True
-    return True, f"Perplexity connected via {source} key."
+        set_perplexity_health(False, "not_connected", "No Perplexity connection found yet.")
+        return False
+
+    if not validate_perplexity_key_format(key):
+        set_perplexity_health(False, "error", "That connection code does not look valid.")
+        return False
+
+    headers = {
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "sonar",
+        "messages": [
+            {"role": "user", "content": "Reply with the single word: connected"}
+        ]
+    }
+
+    try:
+        response = requests.post(
+            "https://api.perplexity.ai/v1/sonar",
+            headers=headers,
+            json=payload,
+            timeout=30
+        )
+        response.raise_for_status()
+        set_perplexity_health(True, "verified", f"Perplexity connected successfully using your {source} connection.")
+        return True
+    except requests.HTTPError:
+        set_perplexity_health(False, "error", "Perplexity rejected the connection. Please re-check your key.")
+        return False
+    except requests.RequestException:
+        set_perplexity_health(False, "error", "Could not reach Perplexity right now. Please try again.")
+        return False
+    except Exception:
+        set_perplexity_health(False, "error", "Unexpected error while verifying the connection.")
+        return False
 
 def run_perplexity_research(user_prompt):
     key, _ = get_perplexity_api_key()
@@ -228,47 +281,88 @@ def run_perplexity_research(user_prompt):
     citations = data.get("citations", [])
     return content, citations
 
+def health_badge(health):
+    if health == "verified":
+        return "<span class='status-ok'>Verified</span>"
+    if health == "error":
+        return "<span class='status-error'>Needs attention</span>"
+    if health == "configured":
+        return "<span class='status-neutral'>Key found</span>"
+    return "<span class='status-pending'>Not connected</span>"
+
 with st.sidebar:
     st.header("System")
     st.write("Nexus OS v2")
 
     if st.button("Reset onboarding"):
-        keys_to_keep = []
         for k in list(st.session_state.keys()):
-            if k not in keys_to_keep:
-                del st.session_state[k]
+            del st.session_state[k]
         st.rerun()
 
-    st.markdown("### Perplexity Connection")
+    st.markdown("### Connect Perplexity")
+
+    st.caption("Simple version: connect once, then use it in your workflows.")
+
+    st.link_button(
+        "Open Perplexity API settings",
+        "https://www.perplexity.ai/account/api/keys",
+        type="secondary",
+        use_container_width=True
+    )
+
+    with st.expander("How this works"):
+        st.write("1. Open your Perplexity API settings page.")
+        st.write("2. Generate a new key there.")
+        st.write("3. Paste it below once, or save it in Railway for persistent use.")
+        st.write("4. Click Verify connection.")
+        st.write("This app never shows the key back to you.")
 
     env_key_present = bool(os.environ.get("PERPLEXITY_API_KEY", "").strip())
+    temp_key_present = bool(st.session_state.perplexity_key_session.strip())
+
     if env_key_present:
-        st.success("Railway environment key detected for Perplexity.")
+        set_perplexity_health(
+            st.session_state.connector_registry["Perplexity"]["connected"],
+            "configured" if not st.session_state.connector_registry["Perplexity"]["connected"] else st.session_state.connector_registry["Perplexity"]["health"],
+            "A saved Perplexity connection is available from Railway."
+        )
+
+    if env_key_present:
+        st.success("A saved Perplexity connection is available.")
+    elif temp_key_present:
+        st.info("A temporary Perplexity connection has been entered for this session.")
     else:
-        st.info("No Railway environment key detected. You can use the temporary masked field below.")
+        st.info("No Perplexity connection has been added yet.")
 
     temp_key = st.text_input(
-        "Temporary Perplexity API key",
+        "Paste temporary Perplexity connection code",
         value=st.session_state.perplexity_key_session,
         type="password",
-        help="For testing only. Production is safer with Railway Variables."
+        help="Good for testing. For long-term use, save the key in Railway Variables."
     )
     st.session_state.perplexity_key_session = temp_key
 
-    if st.button("Connect Perplexity"):
-        ok, message = connect_perplexity()
-        if ok:
-            st.success(message)
-        else:
-            st.error(message)
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Verify connection", use_container_width=True):
+            verify_perplexity_connection()
+    with col2:
+        if st.button("Disconnect", use_container_width=True):
+            disconnect_perplexity()
+            st.rerun()
+
+    st.markdown(
+        f"Status: {health_badge(st.session_state.connector_registry['Perplexity']['health'])}",
+        unsafe_allow_html=True
+    )
+    if st.session_state.perplexity_status_message:
+        st.caption(st.session_state.perplexity_status_message)
 
     st.markdown("### Connector Status")
     if st.session_state.selected_stack:
         for tool in st.session_state.selected_stack:
-            if st.session_state.connector_registry[tool]["connected"]:
-                st.markdown(f"**{tool}** — <span class='status-ok'>Connected</span>", unsafe_allow_html=True)
-            else:
-                st.markdown(f"**{tool}** — <span class='status-pending'>Not connected</span>", unsafe_allow_html=True)
+            health = st.session_state.connector_registry[tool].get("health", "not_connected")
+            st.markdown(f"**{tool}** — {health_badge(health)}", unsafe_allow_html=True)
     else:
         st.caption("No tools selected yet.")
 
@@ -405,7 +499,11 @@ else:
         st.markdown('<div class="section-label">Connection readiness</div>', unsafe_allow_html=True)
         for tool in st.session_state.selected_stack:
             auth_type = st.session_state.connector_registry[tool]["auth_type"]
-            st.markdown(f"<div class='connector-row'><b>{tool}</b> — {auth_type}</div>", unsafe_allow_html=True)
+            health = st.session_state.connector_registry[tool].get("health", "not_connected")
+            st.markdown(
+                f"<div class='connector-row'><b>{tool}</b> — {auth_type} — {health_badge(health)}</div>",
+                unsafe_allow_html=True
+            )
 
         if st.button("Confirm stack and continue", type="primary"):
             st.session_state.onboarded = True
@@ -437,8 +535,8 @@ else:
             if st.button("Run workflow", type="primary"):
                 if "Perplexity" not in st.session_state.selected_stack:
                     st.error("Perplexity must be included in the selected stack for this version.")
-                elif not st.session_state.connector_registry["Perplexity"]["connected"]:
-                    st.error("Please connect Perplexity first.")
+                elif st.session_state.connector_registry["Perplexity"]["health"] != "verified":
+                    st.error("Please verify your Perplexity connection first.")
                 elif not st.session_state.task_input.strip():
                     st.error("Please enter a task.")
                 else:
@@ -446,9 +544,9 @@ else:
                         result, citations = run_perplexity_research(st.session_state.task_input.strip())
                         st.session_state.perplexity_result = result
                         st.session_state.perplexity_citations = citations
-                        st.success("Perplexity research completed.")
+                        st.success("Research completed successfully.")
                     except requests.HTTPError:
-                        st.error("Perplexity API request failed. Check the key and try again.")
+                        st.error("Perplexity rejected the request. Please re-check your connection.")
                     except requests.RequestException:
                         st.error("Network error while contacting Perplexity.")
                     except Exception:
@@ -461,7 +559,7 @@ else:
                 st.write(st.session_state.perplexity_result)
 
                 if st.session_state.perplexity_citations:
-                    st.markdown("**Citations**")
+                    st.markdown("**Sources**")
                     for idx, url in enumerate(st.session_state.perplexity_citations, start=1):
                         st.markdown(f"{idx}. {url}")
                 st.markdown('</div>', unsafe_allow_html=True)
@@ -479,9 +577,9 @@ else:
             st.markdown('</div>', unsafe_allow_html=True)
 
             st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
-            st.subheader("Security Notes")
-            st.write("- Production keys should go in Railway Variables.")
-            st.write("- Temporary key entry is for testing only.")
-            st.write("- Secrets are never displayed back in the UI.")
-            st.write("- Input for typed tool identifiers is restricted to simple characters.")
+            st.subheader("Plain-English Connection Guide")
+            st.write("- You log into Perplexity on their website.")
+            st.write("- You create a connection code there.")
+            st.write("- You paste it here once, then verify it.")
+            st.write("- Later, we can make this feel even more like one-click sign-in for supported tools.")
             st.markdown('</div>', unsafe_allow_html=True)
