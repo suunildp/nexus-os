@@ -38,30 +38,6 @@ st.markdown("""
 st.title("🧠 Nexus OS")
 st.caption("Your personal AI orchestration layer")
 
-if "onboarded" not in st.session_state:
-    st.session_state.onboarded = False
-
-if "goal" not in st.session_state:
-    st.session_state.goal = ""
-
-if "output_format" not in st.session_state:
-    st.session_state.output_format = "Text"
-
-if "optimization_pref" not in st.session_state:
-    st.session_state.optimization_pref = "Accuracy"
-
-if "allowed_connectors" not in st.session_state:
-    st.session_state.allowed_connectors = []
-
-if "recommended_stack" not in st.session_state:
-    st.session_state.recommended_stack = []
-
-if "alternative_stack" not in st.session_state:
-    st.session_state.alternative_stack = []
-
-if "task_input" not in st.session_state:
-    st.session_state.task_input = ""
-
 GOAL_OPTIONS = [
     "Deep research only",
     "Research + blog / long-form",
@@ -85,6 +61,23 @@ TOOL_OPTIONS = [
     "Merlin"
 ]
 
+if "onboarded" not in st.session_state:
+    st.session_state.onboarded = False
+if "goal" not in st.session_state:
+    st.session_state.goal = ""
+if "output_format" not in st.session_state:
+    st.session_state.output_format = "Text"
+if "optimization_pref" not in st.session_state:
+    st.session_state.optimization_pref = "Accuracy"
+if "allowed_connectors" not in st.session_state:
+    st.session_state.allowed_connectors = []
+if "recommended_stack" not in st.session_state:
+    st.session_state.recommended_stack = []
+if "alternative_stack" not in st.session_state:
+    st.session_state.alternative_stack = []
+if "task_input" not in st.session_state:
+    st.session_state.task_input = ""
+
 def get_tool_recommendations(goal):
     if goal == "Deep research only":
         return ["Perplexity", "NotebookLM"], ["Gemini", "Claude"]
@@ -99,6 +92,13 @@ def get_tool_recommendations(goal):
     else:
         return ["Perplexity"], ["Gemini", "Claude", "ChatGPT"]
 
+def swap_tool(old_tool, new_tool):
+    updated = st.session_state.recommended_stack.copy()
+    if old_tool in updated:
+        idx = updated.index(old_tool)
+        updated[idx] = new_tool
+        st.session_state.recommended_stack = updated
+
 with st.sidebar:
     st.header("System")
     st.write("Nexus OS v2")
@@ -110,7 +110,7 @@ with st.sidebar:
 def onboarding():
     st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
     st.subheader("Layer 1 Onboarding")
-    st.markdown('<div class="small-muted">Define the task and let Nexus OS recommend the best-fit tool stack.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="small-muted">Define the task and let Nexus OS recommend a best-fit tool stack.</div>', unsafe_allow_html=True)
 
     goal = st.selectbox("Select your primary goal:", GOAL_OPTIONS)
 
@@ -155,6 +155,51 @@ else:
         for tool in st.session_state.recommended_stack:
             st.markdown(f'<span class="tag">{tool}</span>', unsafe_allow_html=True)
 
+        st.markdown("**One-click swaps**")
+        if st.session_state.goal == "Research + blog / long-form":
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Swap Gemini → Claude"):
+                    swap_tool("Gemini", "Claude")
+                    st.rerun()
+            with col2:
+                if st.button("Swap Gemini → ChatGPT"):
+                    swap_tool("Gemini", "ChatGPT")
+                    st.rerun()
+
+        elif st.session_state.goal == "Research + AI agent / prompt / config":
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Swap Claude → Gemini"):
+                    swap_tool("Claude", "Gemini")
+                    st.rerun()
+            with col2:
+                if st.button("Swap Claude → ChatGPT"):
+                    swap_tool("Claude", "ChatGPT")
+                    st.rerun()
+
+        elif st.session_state.goal == "Research + slide deck / pitch":
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Swap Gamma AI → AIPPT"):
+                    swap_tool("Gamma AI", "AIPPT")
+                    st.rerun()
+            with col2:
+                if st.button("Swap Gamma AI → Canva"):
+                    swap_tool("Gamma AI", "Canva")
+                    st.rerun()
+
+        elif st.session_state.goal == "Research + social media sequence":
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Swap Gemini → ChatGPT"):
+                    swap_tool("Gemini", "ChatGPT")
+                    st.rerun()
+            with col2:
+                if st.button("Swap Gemini → Grok"):
+                    swap_tool("Gemini", "Grok")
+                    st.rerun()
+
         st.markdown("**Alternatives**")
         for tool in st.session_state.alternative_stack:
             st.markdown(f'<span class="tag">{tool}</span>', unsafe_allow_html=True)
@@ -189,11 +234,11 @@ else:
             st.session_state.task_input = st.text_area(
                 "Describe your task",
                 value=st.session_state.task_input,
-                placeholder="Example: Create a cited long-form outline and recommend where Gemini should replace Claude."
+                placeholder="Example: Research AI adoption in India and create a detailed blog outline."
             )
 
             if st.button("Run workflow", type="primary"):
-                st.info("Execution logic comes next. Tool recommendation and stack customization are now live.")
+                st.info("Execution logic comes next. One-click swap is now live.")
             st.markdown('</div>', unsafe_allow_html=True)
 
         with col2:
