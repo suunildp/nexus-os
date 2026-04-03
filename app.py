@@ -37,6 +37,18 @@ st.markdown("""
     margin-bottom: 0.35rem;
     font-weight: 600;
 }
+.status-ok {
+    color: #4ade80;
+    font-weight: 600;
+}
+.status-pending {
+    color: #fbbf24;
+    font-weight: 600;
+}
+.connector-row {
+    padding: 0.6rem 0;
+    border-bottom: 1px solid rgba(120,120,120,0.15);
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -84,6 +96,20 @@ TOOL_ALIAS_MAP = {
     "merlin": "Merlin"
 }
 
+CONNECTOR_REGISTRY = {
+    "Perplexity": {"auth_type": "API Key", "connected": False},
+    "Gemini": {"auth_type": "API Key", "connected": False},
+    "Claude": {"auth_type": "API Key", "connected": False},
+    "ChatGPT": {"auth_type": "API Key", "connected": False},
+    "Julius AI": {"auth_type": "API Key", "connected": False},
+    "Canva": {"auth_type": "OAuth / API", "connected": False},
+    "Gamma AI": {"auth_type": "OAuth / API", "connected": False},
+    "AIPPT": {"auth_type": "OAuth / API", "connected": False},
+    "NotebookLM": {"auth_type": "OAuth / API", "connected": False},
+    "Grok": {"auth_type": "API Key", "connected": False},
+    "Merlin": {"auth_type": "API Key", "connected": False}
+}
+
 if "onboarded" not in st.session_state:
     st.session_state.onboarded = False
 if "goal" not in st.session_state:
@@ -104,6 +130,8 @@ if "unrecognized_tools" not in st.session_state:
     st.session_state.unrecognized_tools = []
 if "task_input" not in st.session_state:
     st.session_state.task_input = ""
+if "connector_registry" not in st.session_state:
+    st.session_state.connector_registry = CONNECTOR_REGISTRY.copy()
 
 def get_tool_recommendations(goal):
     if goal == "Deep research only":
@@ -141,6 +169,9 @@ def parse_tool_identifiers(raw_text):
 
     return recognized, unrecognized
 
+def connect_tool(tool_name):
+    st.session_state.connector_registry[tool_name]["connected"] = True
+
 with st.sidebar:
     st.header("System")
     st.write("Nexus OS v2")
@@ -148,6 +179,16 @@ with st.sidebar:
         for key in list(st.session_state.keys()):
             del st.session_state[key]
         st.rerun()
+
+    st.markdown("### Connector Status")
+    if st.session_state.selected_stack:
+        for tool in st.session_state.selected_stack:
+            if st.session_state.connector_registry[tool]["connected"]:
+                st.markdown(f"**{tool}** — <span class='status-ok'>Connected</span>", unsafe_allow_html=True)
+            else:
+                st.markdown(f"**{tool}** — <span class='status-pending'>Not connected</span>", unsafe_allow_html=True)
+    else:
+        st.caption("No tools selected yet.")
 
 def onboarding():
     st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
@@ -281,6 +322,10 @@ else:
         )
         st.session_state.selected_stack = selected_stack
 
+        st.markdown('<div class="section-label">Connection readiness</div>', unsafe_allow_html=True)
+        for tool in st.session_state.selected_stack:
+            st.markdown(f"<div class='connector-row'><b>{tool}</b> — {st.session_state.connector_registry[tool]['auth_type']}</div>", unsafe_allow_html=True)
+
         if st.button("Confirm stack and continue", type="primary"):
             st.session_state.onboarded = True
             st.rerun()
@@ -300,6 +345,23 @@ else:
             st.markdown('</div>', unsafe_allow_html=True)
 
             st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
+            st.subheader("Connector Registry")
+            for tool in st.session_state.selected_stack:
+                col_a, col_b = st.columns([3, 1])
+                with col_a:
+                    status = "Connected" if st.session_state.connector_registry[tool]["connected"] else "Not connected"
+                    auth_type = st.session_state.connector_registry[tool]["auth_type"]
+                    st.write(f"**{tool}** — {auth_type} — {status}")
+                with col_b:
+                    if not st.session_state.connector_registry[tool]["connected"]:
+                        if st.button(f"Connect {tool}", key=f"connect_{tool}"):
+                            connect_tool(tool)
+                            st.rerun()
+                    else:
+                        st.success("Ready")
+            st.markdown('</div>', unsafe_allow_html=True)
+
+            st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
             st.subheader("Execution Area")
             st.session_state.task_input = st.text_area(
                 "Describe your task",
@@ -308,7 +370,14 @@ else:
             )
 
             if st.button("Run workflow", type="primary"):
-                st.info("Execution logic comes next. Tool planning is now clearer.")
+                unconnected = [
+                    tool for tool in st.session_state.selected_stack
+                    if not st.session_state.connector_registry[tool]["connected"]
+                ]
+                if unconnected:
+                    st.warning(f"Please connect these tools first: {', '.join(unconnected)}")
+                else:
+                    st.success("All selected connectors are marked connected. Real execution wiring comes next.")
             st.markdown('</div>', unsafe_allow_html=True)
 
         with col2:
