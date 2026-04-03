@@ -32,6 +32,11 @@ st.markdown("""
     border: 1px solid rgba(120,120,120,0.25);
     font-size: 0.85rem;
 }
+.section-label {
+    margin-top: 1rem;
+    margin-bottom: 0.35rem;
+    font-weight: 600;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -87,10 +92,10 @@ if "output_format" not in st.session_state:
     st.session_state.output_format = "Text"
 if "optimization_pref" not in st.session_state:
     st.session_state.optimization_pref = "Accuracy"
-if "allowed_connectors" not in st.session_state:
-    st.session_state.allowed_connectors = []
-if "recommended_stack" not in st.session_state:
-    st.session_state.recommended_stack = []
+if "selected_stack" not in st.session_state:
+    st.session_state.selected_stack = []
+if "suggested_stack" not in st.session_state:
+    st.session_state.suggested_stack = []
 if "alternative_stack" not in st.session_state:
     st.session_state.alternative_stack = []
 if "recognized_tools" not in st.session_state:
@@ -115,11 +120,11 @@ def get_tool_recommendations(goal):
         return ["Perplexity"], ["Gemini", "Claude", "ChatGPT"]
 
 def swap_tool(old_tool, new_tool):
-    updated = st.session_state.recommended_stack.copy()
+    updated = st.session_state.suggested_stack.copy()
     if old_tool in updated:
         idx = updated.index(old_tool)
         updated[idx] = new_tool
-        st.session_state.recommended_stack = updated
+        st.session_state.suggested_stack = updated
 
 def parse_tool_identifiers(raw_text):
     parts = [p.strip().lower() for p in raw_text.split(",") if p.strip()]
@@ -147,7 +152,7 @@ with st.sidebar:
 def onboarding():
     st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
     st.subheader("Layer 1 Onboarding")
-    st.markdown('<div class="small-muted">Define the task and let Nexus OS recommend a best-fit tool stack.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="small-muted">Define the task and let Nexus OS suggest a best-fit tool stack.</div>', unsafe_allow_html=True)
 
     goal = st.selectbox("Select your primary goal:", GOAL_OPTIONS)
 
@@ -161,41 +166,46 @@ def onboarding():
         ["Accuracy", "Speed", "Cost", "Balanced"]
     )
 
-    if st.button("Generate recommended stack", type="primary"):
-        recommended, alternatives = get_tool_recommendations(goal)
+    if st.button("Generate suggested stack", type="primary"):
+        suggested, alternatives = get_tool_recommendations(goal)
         st.session_state.goal = goal
         st.session_state.output_format = output_format
         st.session_state.optimization_pref = optimization_pref
-        st.session_state.recommended_stack = recommended
+        st.session_state.suggested_stack = suggested
+        st.session_state.selected_stack = suggested.copy()
         st.session_state.alternative_stack = alternatives
+        st.session_state.recognized_tools = []
+        st.session_state.unrecognized_tools = []
         st.rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-if not st.session_state.onboarded and not st.session_state.recommended_stack:
+if not st.session_state.onboarded and not st.session_state.suggested_stack:
     onboarding()
 else:
     if not st.session_state.onboarded:
         st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
-        st.subheader("Recommended Stack")
+        st.subheader("Tool Planning")
         st.write(f"**Goal:** {st.session_state.goal}")
         st.write(f"**Output Format:** {st.session_state.output_format}")
         st.write(f"**Optimization Preference:** {st.session_state.optimization_pref}")
 
-        st.markdown("**Primary recommendation**")
-        for tool in st.session_state.recommended_stack:
+        st.markdown('<div class="section-label">Suggested stack</div>', unsafe_allow_html=True)
+        for tool in st.session_state.suggested_stack:
             st.markdown(f'<span class="tag">{tool}</span>', unsafe_allow_html=True)
 
-        st.markdown("**One-click swaps**")
+        st.markdown('<div class="section-label">One-click swaps</div>', unsafe_allow_html=True)
         if st.session_state.goal == "Research + blog / long-form":
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("Swap Gemini → Claude"):
                     swap_tool("Gemini", "Claude")
+                    st.session_state.selected_stack = st.session_state.suggested_stack.copy()
                     st.rerun()
             with col2:
                 if st.button("Swap Gemini → ChatGPT"):
                     swap_tool("Gemini", "ChatGPT")
+                    st.session_state.selected_stack = st.session_state.suggested_stack.copy()
                     st.rerun()
 
         elif st.session_state.goal == "Research + AI agent / prompt / config":
@@ -203,10 +213,12 @@ else:
             with col1:
                 if st.button("Swap Claude → Gemini"):
                     swap_tool("Claude", "Gemini")
+                    st.session_state.selected_stack = st.session_state.suggested_stack.copy()
                     st.rerun()
             with col2:
                 if st.button("Swap Claude → ChatGPT"):
                     swap_tool("Claude", "ChatGPT")
+                    st.session_state.selected_stack = st.session_state.suggested_stack.copy()
                     st.rerun()
 
         elif st.session_state.goal == "Research + slide deck / pitch":
@@ -214,10 +226,12 @@ else:
             with col1:
                 if st.button("Swap Gamma AI → AIPPT"):
                     swap_tool("Gamma AI", "AIPPT")
+                    st.session_state.selected_stack = st.session_state.suggested_stack.copy()
                     st.rerun()
             with col2:
                 if st.button("Swap Gamma AI → Canva"):
                     swap_tool("Gamma AI", "Canva")
+                    st.session_state.selected_stack = st.session_state.suggested_stack.copy()
                     st.rerun()
 
         elif st.session_state.goal == "Research + social media sequence":
@@ -225,13 +239,15 @@ else:
             with col1:
                 if st.button("Swap Gemini → ChatGPT"):
                     swap_tool("Gemini", "ChatGPT")
+                    st.session_state.selected_stack = st.session_state.suggested_stack.copy()
                     st.rerun()
             with col2:
                 if st.button("Swap Gemini → Grok"):
                     swap_tool("Gemini", "Grok")
+                    st.session_state.selected_stack = st.session_state.suggested_stack.copy()
                     st.rerun()
 
-        st.markdown("**Alternatives**")
+        st.markdown('<div class="section-label">Alternatives</div>', unsafe_allow_html=True)
         for tool in st.session_state.alternative_stack:
             st.markdown(f'<span class="tag">{tool}</span>', unsafe_allow_html=True)
 
@@ -244,27 +260,28 @@ else:
             recognized, unrecognized = parse_tool_identifiers(raw_tool_input)
             st.session_state.recognized_tools = recognized
             st.session_state.unrecognized_tools = unrecognized
+            merged = list(dict.fromkeys(st.session_state.suggested_stack + recognized))
+            st.session_state.selected_stack = merged
 
         if st.session_state.recognized_tools:
-            st.markdown("**Recognized tools**")
+            st.markdown('<div class="section-label">Recognized from your input</div>', unsafe_allow_html=True)
             for tool in st.session_state.recognized_tools:
                 st.markdown(f'<span class="tag">{tool}</span>', unsafe_allow_html=True)
 
         if st.session_state.unrecognized_tools:
-            st.markdown("**Unrecognized entries**")
+            st.markdown('<div class="section-label">Unrecognized entries</div>', unsafe_allow_html=True)
             for tool in st.session_state.unrecognized_tools:
                 st.markdown(f'<span class="tag">{tool}</span>', unsafe_allow_html=True)
 
-        default_stack = list(dict.fromkeys(st.session_state.recommended_stack + st.session_state.recognized_tools))
-
-        custom_stack = st.multiselect(
-            "Customize your tool combo before continuing:",
+        st.markdown('<div class="section-label">Your selected stack</div>', unsafe_allow_html=True)
+        selected_stack = st.multiselect(
+            "Review or customize your final tool combo:",
             TOOL_OPTIONS,
-            default=default_stack
+            default=st.session_state.selected_stack
         )
+        st.session_state.selected_stack = selected_stack
 
         if st.button("Confirm stack and continue", type="primary"):
-            st.session_state.allowed_connectors = custom_stack
             st.session_state.onboarded = True
             st.rerun()
 
@@ -279,7 +296,7 @@ else:
             st.write(f"**Goal:** {st.session_state.goal}")
             st.write(f"**Output Format:** {st.session_state.output_format}")
             st.write(f"**Optimization Preference:** {st.session_state.optimization_pref}")
-            st.write(f"**Selected Tool Stack:** {', '.join(st.session_state.allowed_connectors) if st.session_state.allowed_connectors else 'None selected'}")
+            st.write(f"**Selected Tool Stack:** {', '.join(st.session_state.selected_stack) if st.session_state.selected_stack else 'None selected'}")
             st.markdown('</div>', unsafe_allow_html=True)
 
             st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
@@ -291,12 +308,17 @@ else:
             )
 
             if st.button("Run workflow", type="primary"):
-                st.info("Execution logic comes next. Dynamic connector recall is now live.")
+                st.info("Execution logic comes next. Tool planning is now clearer.")
             st.markdown('</div>', unsafe_allow_html=True)
 
         with col2:
             st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
-            st.subheader("Suggested Alternatives")
-            for tool in st.session_state.alternative_stack:
+            st.subheader("Plan Snapshot")
+            st.write("**Suggested stack:**")
+            for tool in st.session_state.suggested_stack:
+                st.markdown(f'<span class="tag">{tool}</span>', unsafe_allow_html=True)
+
+            st.write("**Selected stack:**")
+            for tool in st.session_state.selected_stack:
                 st.markdown(f'<span class="tag">{tool}</span>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
