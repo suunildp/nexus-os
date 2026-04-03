@@ -1,3 +1,6 @@
+import os
+import re
+import requests
 import streamlit as st
 
 st.set_page_config(
@@ -110,28 +113,24 @@ CONNECTOR_REGISTRY = {
     "Merlin": {"auth_type": "API Key", "connected": False}
 }
 
-if "onboarded" not in st.session_state:
-    st.session_state.onboarded = False
-if "goal" not in st.session_state:
-    st.session_state.goal = ""
-if "output_format" not in st.session_state:
-    st.session_state.output_format = "Text"
-if "optimization_pref" not in st.session_state:
-    st.session_state.optimization_pref = "Accuracy"
-if "selected_stack" not in st.session_state:
-    st.session_state.selected_stack = []
-if "suggested_stack" not in st.session_state:
-    st.session_state.suggested_stack = []
-if "alternative_stack" not in st.session_state:
-    st.session_state.alternative_stack = []
-if "recognized_tools" not in st.session_state:
-    st.session_state.recognized_tools = []
-if "unrecognized_tools" not in st.session_state:
-    st.session_state.unrecognized_tools = []
-if "task_input" not in st.session_state:
-    st.session_state.task_input = ""
-if "connector_registry" not in st.session_state:
-    st.session_state.connector_registry = CONNECTOR_REGISTRY.copy()
+for key, value in {
+    "onboarded": False,
+    "goal": "",
+    "output_format": "Text",
+    "optimization_pref": "Accuracy",
+    "selected_stack": [],
+    "suggested_stack": [],
+    "alternative_stack": [],
+    "recognized_tools": [],
+    "unrecognized_tools": [],
+    "task_input": "",
+    "connector_registry": CONNECTOR_REGISTRY.copy(),
+    "perplexity_key_session": "",
+    "perplexity_result": "",
+    "perplexity_citations": []
+}.items():
+    if key not in st.session_state:
+        st.session_state[key] = value
 
 def get_tool_recommendations(goal):
     if goal == "Deep research only":
@@ -155,7 +154,15 @@ def swap_tool(old_tool, new_tool):
         st.session_state.suggested_stack = updated
 
 def parse_tool_identifiers(raw_text):
-    parts = [p.strip().lower() for p in raw_text.split(",") if p.strip()]
+    cleaned = raw_text.strip().lower()
+    if not cleaned:
+        return [], []
+    if len(cleaned) > 200:
+        return [], ["input too long"]
+    if not re.fullmatch(r"[a-z0-9,\-\s]+", cleaned):
+        return [], ["invalid characters in tool input"]
+
+    parts = [p.strip() for p in cleaned.split(",") if p.strip()]
     recognized = []
     unrecognized = []
 
@@ -169,16 +176,91 @@ def parse_tool_identifiers(raw_text):
 
     return recognized, unrecognized
 
-def connect_tool(tool_name):
-    st.session_state.connector_registry[tool_name]["connected"] = True
+def get_perplexity_api_key():
+    env_key = os.environ.get("PERPLEXITY_API_KEY", "").strip()
+    if env_key:
+        return env_key, "railway"
+    session_key = st.session_state.perplexity_key_session.strip()
+    if session_key:
+        return session_key, "session"
+    return "", ""
+
+def validate_perplexity_key(key):
+    return key.startswith("pplx_") or key.startswith("pxl_") or len(key) > 20
+
+def connect_perplexity():
+    key, source = get_perplexity_api_key()
+    if not key:
+        return False, "No Perplexity API key found. Add it in Railway Variables or enter it in the masked field."
+    if not validate_perplexity_key(key):
+        return False, "Perplexity API key format looks invalid."
+    st.session_state.connector_registry["Perplexity"]["connected"] = True
+    return True, f"Perplexity connected via {source} key."
+
+def run_perplexity_research(user_prompt):
+    key, _ = get_perplexity_api_key()
+    headers = {
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "sonar",
+        "messages": [
+            {
+                "role": "system",
+                "content": "You are a precise research assistant. Give a concise, well-structured answer."
+            },
+            {
+                "role": "user",
+                "content": user_prompt
+            }
+        ]
+    }
+    response = requests.post(
+        "https://api.perplexity.ai/v1/sonar",
+        headers=headers,
+        json=payload,
+        timeout=45
+    )
+    response.raise_for_status()
+    data = response.json()
+    content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+    citations = data.get("citations", [])
+    return content, citations
 
 with st.sidebar:
     st.header("System")
     st.write("Nexus OS v2")
+
     if st.button("Reset onboarding"):
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
+        keys_to_keep = []
+        for k in list(st.session_state.keys()):
+            if k not in keys_to_keep:
+                del st.session_state[k]
         st.rerun()
+
+    st.markdown("### Perplexity Connection")
+
+    env_key_present = bool(os.environ.get("PERPLEXITY_API_KEY", "").strip())
+    if env_key_present:
+        st.success("Railway environment key detected for Perplexity.")
+    else:
+        st.info("No Railway environment key detected. You can use the temporary masked field below.")
+
+    temp_key = st.text_input(
+        "Temporary Perplexity API key",
+        value=st.session_state.perplexity_key_session,
+        type="password",
+        help="For testing only. Production is safer with Railway Variables."
+    )
+    st.session_state.perplexity_key_session = temp_key
+
+    if st.button("Connect Perplexity"):
+        ok, message = connect_perplexity()
+        if ok:
+            st.success(message)
+        else:
+            st.error(message)
 
     st.markdown("### Connector Status")
     if st.session_state.selected_stack:
@@ -196,12 +278,10 @@ def onboarding():
     st.markdown('<div class="small-muted">Define the task and let Nexus OS suggest a best-fit tool stack.</div>', unsafe_allow_html=True)
 
     goal = st.selectbox("Select your primary goal:", GOAL_OPTIONS)
-
     output_format = st.selectbox(
         "Select your desired output format:",
         ["Text", "Markdown", "JSON", "Slide Outline", "Agent Prompt"]
     )
-
     optimization_pref = st.selectbox(
         "Select your optimization preference:",
         ["Accuracy", "Speed", "Cost", "Balanced"]
@@ -324,7 +404,8 @@ else:
 
         st.markdown('<div class="section-label">Connection readiness</div>', unsafe_allow_html=True)
         for tool in st.session_state.selected_stack:
-            st.markdown(f"<div class='connector-row'><b>{tool}</b> — {st.session_state.connector_registry[tool]['auth_type']}</div>", unsafe_allow_html=True)
+            auth_type = st.session_state.connector_registry[tool]["auth_type"]
+            st.markdown(f"<div class='connector-row'><b>{tool}</b> — {auth_type}</div>", unsafe_allow_html=True)
 
         if st.button("Confirm stack and continue", type="primary"):
             st.session_state.onboarded = True
@@ -333,7 +414,7 @@ else:
         st.markdown('</div>', unsafe_allow_html=True)
 
     else:
-        col1, col2 = st.columns([1.2, 1])
+        col1, col2 = st.columns([1.25, 1])
 
         with col1:
             st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
@@ -345,40 +426,45 @@ else:
             st.markdown('</div>', unsafe_allow_html=True)
 
             st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
-            st.subheader("Connector Registry")
-            for tool in st.session_state.selected_stack:
-                col_a, col_b = st.columns([3, 1])
-                with col_a:
-                    status = "Connected" if st.session_state.connector_registry[tool]["connected"] else "Not connected"
-                    auth_type = st.session_state.connector_registry[tool]["auth_type"]
-                    st.write(f"**{tool}** — {auth_type} — {status}")
-                with col_b:
-                    if not st.session_state.connector_registry[tool]["connected"]:
-                        if st.button(f"Connect {tool}", key=f"connect_{tool}"):
-                            connect_tool(tool)
-                            st.rerun()
-                    else:
-                        st.success("Ready")
-            st.markdown('</div>', unsafe_allow_html=True)
-
-            st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
             st.subheader("Execution Area")
             st.session_state.task_input = st.text_area(
                 "Describe your task",
                 value=st.session_state.task_input,
-                placeholder="Example: Research AI adoption in India and create a detailed blog outline."
+                placeholder="Example: Research AI adoption in India and create a detailed blog outline.",
+                max_chars=3000
             )
 
             if st.button("Run workflow", type="primary"):
-                unconnected = [
-                    tool for tool in st.session_state.selected_stack
-                    if not st.session_state.connector_registry[tool]["connected"]
-                ]
-                if unconnected:
-                    st.warning(f"Please connect these tools first: {', '.join(unconnected)}")
+                if "Perplexity" not in st.session_state.selected_stack:
+                    st.error("Perplexity must be included in the selected stack for this version.")
+                elif not st.session_state.connector_registry["Perplexity"]["connected"]:
+                    st.error("Please connect Perplexity first.")
+                elif not st.session_state.task_input.strip():
+                    st.error("Please enter a task.")
                 else:
-                    st.success("All selected connectors are marked connected. Real execution wiring comes next.")
+                    try:
+                        result, citations = run_perplexity_research(st.session_state.task_input.strip())
+                        st.session_state.perplexity_result = result
+                        st.session_state.perplexity_citations = citations
+                        st.success("Perplexity research completed.")
+                    except requests.HTTPError:
+                        st.error("Perplexity API request failed. Check the key and try again.")
+                    except requests.RequestException:
+                        st.error("Network error while contacting Perplexity.")
+                    except Exception:
+                        st.error("Unexpected error during execution.")
             st.markdown('</div>', unsafe_allow_html=True)
+
+            if st.session_state.perplexity_result:
+                st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
+                st.subheader("Perplexity Result")
+                st.write(st.session_state.perplexity_result)
+
+                if st.session_state.perplexity_citations:
+                    st.markdown("**Citations**")
+                    for idx, url in enumerate(st.session_state.perplexity_citations, start=1):
+                        st.markdown(f"{idx}. {url}")
+                st.markdown('</div>', unsafe_allow_html=True)
 
         with col2:
             st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
@@ -390,4 +476,12 @@ else:
             st.write("**Selected stack:**")
             for tool in st.session_state.selected_stack:
                 st.markdown(f'<span class="tag">{tool}</span>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+            st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
+            st.subheader("Security Notes")
+            st.write("- Production keys should go in Railway Variables.")
+            st.write("- Temporary key entry is for testing only.")
+            st.write("- Secrets are never displayed back in the UI.")
+            st.write("- Input for typed tool identifiers is restricted to simple characters.")
             st.markdown('</div>', unsafe_allow_html=True)
