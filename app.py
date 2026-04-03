@@ -61,6 +61,24 @@ TOOL_OPTIONS = [
     "Merlin"
 ]
 
+TOOL_ALIAS_MAP = {
+    "perplexity": "Perplexity",
+    "gemini": "Gemini",
+    "claude": "Claude",
+    "chatgpt": "ChatGPT",
+    "chat gpt": "ChatGPT",
+    "julius": "Julius AI",
+    "julius ai": "Julius AI",
+    "canva": "Canva",
+    "gamma": "Gamma AI",
+    "gamma ai": "Gamma AI",
+    "aippt": "AIPPT",
+    "notebooklm": "NotebookLM",
+    "notebook lm": "NotebookLM",
+    "grok": "Grok",
+    "merlin": "Merlin"
+}
+
 if "onboarded" not in st.session_state:
     st.session_state.onboarded = False
 if "goal" not in st.session_state:
@@ -75,6 +93,10 @@ if "recommended_stack" not in st.session_state:
     st.session_state.recommended_stack = []
 if "alternative_stack" not in st.session_state:
     st.session_state.alternative_stack = []
+if "recognized_tools" not in st.session_state:
+    st.session_state.recognized_tools = []
+if "unrecognized_tools" not in st.session_state:
+    st.session_state.unrecognized_tools = []
 if "task_input" not in st.session_state:
     st.session_state.task_input = ""
 
@@ -98,6 +120,21 @@ def swap_tool(old_tool, new_tool):
         idx = updated.index(old_tool)
         updated[idx] = new_tool
         st.session_state.recommended_stack = updated
+
+def parse_tool_identifiers(raw_text):
+    parts = [p.strip().lower() for p in raw_text.split(",") if p.strip()]
+    recognized = []
+    unrecognized = []
+
+    for part in parts:
+        if part in TOOL_ALIAS_MAP:
+            mapped = TOOL_ALIAS_MAP[part]
+            if mapped not in recognized:
+                recognized.append(mapped)
+        else:
+            unrecognized.append(part)
+
+    return recognized, unrecognized
 
 with st.sidebar:
     st.header("System")
@@ -124,17 +161,11 @@ def onboarding():
         ["Accuracy", "Speed", "Cost", "Balanced"]
     )
 
-    allowed_connectors = st.multiselect(
-        "Allowed connectors/tools:",
-        TOOL_OPTIONS
-    )
-
     if st.button("Generate recommended stack", type="primary"):
         recommended, alternatives = get_tool_recommendations(goal)
         st.session_state.goal = goal
         st.session_state.output_format = output_format
         st.session_state.optimization_pref = optimization_pref
-        st.session_state.allowed_connectors = allowed_connectors
         st.session_state.recommended_stack = recommended
         st.session_state.alternative_stack = alternatives
         st.rerun()
@@ -204,10 +235,32 @@ else:
         for tool in st.session_state.alternative_stack:
             st.markdown(f'<span class="tag">{tool}</span>', unsafe_allow_html=True)
 
+        raw_tool_input = st.text_input(
+            "Add tools by identifier or name (comma-separated)",
+            placeholder="Example: perplexity, gamma, canva"
+        )
+
+        if st.button("Recognize typed tools"):
+            recognized, unrecognized = parse_tool_identifiers(raw_tool_input)
+            st.session_state.recognized_tools = recognized
+            st.session_state.unrecognized_tools = unrecognized
+
+        if st.session_state.recognized_tools:
+            st.markdown("**Recognized tools**")
+            for tool in st.session_state.recognized_tools:
+                st.markdown(f'<span class="tag">{tool}</span>', unsafe_allow_html=True)
+
+        if st.session_state.unrecognized_tools:
+            st.markdown("**Unrecognized entries**")
+            for tool in st.session_state.unrecognized_tools:
+                st.markdown(f'<span class="tag">{tool}</span>', unsafe_allow_html=True)
+
+        default_stack = list(dict.fromkeys(st.session_state.recommended_stack + st.session_state.recognized_tools))
+
         custom_stack = st.multiselect(
             "Customize your tool combo before continuing:",
             TOOL_OPTIONS,
-            default=st.session_state.recommended_stack
+            default=default_stack
         )
 
         if st.button("Confirm stack and continue", type="primary"):
@@ -238,7 +291,7 @@ else:
             )
 
             if st.button("Run workflow", type="primary"):
-                st.info("Execution logic comes next. One-click swap is now live.")
+                st.info("Execution logic comes next. Dynamic connector recall is now live.")
             st.markdown('</div>', unsafe_allow_html=True)
 
         with col2:
