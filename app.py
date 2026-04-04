@@ -16,10 +16,10 @@ st.markdown("""
 .block-container {
     padding-top: 1rem;
     padding-bottom: 2rem;
-    max-width: 1120px;
+    max-width: 1080px;
 }
 .nexus-card {
-    padding: 0.95rem 1rem;
+    padding: 1rem;
     border: 1px solid rgba(120,120,120,0.18);
     border-radius: 14px;
     margin-bottom: 0.9rem;
@@ -27,7 +27,7 @@ st.markdown("""
 }
 .small-muted {
     color: #8a8a8a;
-    font-size: 0.9rem;
+    font-size: 0.92rem;
 }
 .tag {
     display: inline-block;
@@ -64,57 +64,38 @@ st.markdown("""
     margin-bottom: 0.75rem;
     background: rgba(255,255,255,0.02);
 }
-.ok { color: #4ade80; font-weight: 600; }
-.warn { color: #fbbf24; font-weight: 600; }
-.info { color: #93c5fd; font-weight: 600; }
-.mode-live { color: #4ade80; font-weight: 600; }
-.mode-manual { color: #fbbf24; font-weight: 600; }
-.mode-demo { color: #93c5fd; font-weight: 600; }
 .next-box {
     padding: 0.9rem 1rem;
     border-radius: 12px;
     border: 1px solid rgba(147,197,253,0.25);
     background: rgba(147,197,253,0.06);
 }
-.compact-label {
-    font-size: 0.82rem;
-    color: #9a9a9a;
-    margin-bottom: 0.2rem;
-}
-.section-gap {
-    margin-top: 0.4rem;
-}
+.ok { color: #4ade80; font-weight: 600; }
+.warn { color: #fbbf24; font-weight: 600; }
+.mode-live { color: #4ade80; font-weight: 600; }
+.mode-manual { color: #fbbf24; font-weight: 600; }
+.mode-demo { color: #93c5fd; font-weight: 600; }
+
 div[data-testid="stTextArea"] textarea {
     min-height: 100px;
 }
+
 @media (max-width: 768px) {
     .block-container {
         padding-top: 0.75rem;
-        padding-bottom: 1.25rem;
+        padding-bottom: 1.2rem;
         padding-left: 0.8rem;
         padding-right: 0.8rem;
     }
     .nexus-card {
-        padding: 0.85rem 0.85rem;
-        border-radius: 12px;
-        margin-bottom: 0.8rem;
+        padding: 0.85rem;
     }
     h1 {
         font-size: 1.6rem !important;
     }
-    .step-chip {
-        font-size: 0.78rem;
-        padding: 0.38rem 0.58rem;
-    }
-    .tag {
-        font-size: 0.78rem;
-    }
 }
 </style>
 """, unsafe_allow_html=True)
-
-st.title("🧠 Nexus OS")
-st.caption("A guided orchestrator for multi-tool workflows")
 
 GOAL_OPTIONS = [
     "Deep research only",
@@ -185,7 +166,7 @@ DEFAULT_CONNECTOR_MODES = {
     "Merlin": "Manual"
 }
 
-default_state = {
+DEFAULT_STATE = {
     "goal": "",
     "output_format": "Text",
     "optimization_pref": "Accuracy",
@@ -201,10 +182,10 @@ default_state = {
     "execution_log": [],
     "final_artifact": "",
     "run_counter": 0,
-    "connector_modes": copy.deepcopy(DEFAULT_CONNECTOR_MODES)
+    "connector_modes": copy.deepcopy(DEFAULT_CONNECTOR_MODES),
 }
 
-for key, value in default_state.items():
+for key, value in DEFAULT_STATE.items():
     if key not in st.session_state:
         st.session_state[key] = value
 
@@ -219,8 +200,7 @@ def get_tool_recommendations(goal):
         return ["Perplexity", "Gamma AI"], ["AIPPT", "Canva"]
     elif goal == "Research + social media sequence":
         return ["Perplexity", "Gemini"], ["ChatGPT", "Grok"]
-    else:
-        return ["Perplexity"], ["Gemini", "Claude", "ChatGPT"]
+    return ["Perplexity"], ["Gemini", "Claude", "ChatGPT"]
 
 def parse_tool_identifiers(raw_text):
     cleaned = raw_text.strip().lower()
@@ -232,8 +212,7 @@ def parse_tool_identifiers(raw_text):
         return [], ["invalid characters in tool input"]
 
     parts = [p.strip() for p in cleaned.split(",") if p.strip()]
-    recognized = []
-    unrecognized = []
+    recognized, unrecognized = [], []
 
     for part in parts:
         if part in TOOL_ALIAS_MAP:
@@ -249,53 +228,52 @@ def build_default_workflow(goal, stack):
     if not stack:
         return []
 
-    step_templates = {
+    templates = {
         "Deep research only": [
             ("Research brief", stack[0], "Collect facts, questions, and source directions"),
             ("Evidence distillation", stack[1] if len(stack) > 1 else stack[0], "Condense findings into usable notes"),
-            ("Final research memo", stack[0], "Produce a coherent final answer pack")
+            ("Final research memo", stack[0], "Produce a coherent final answer pack"),
         ],
         "Research + blog / long-form": [
             ("Research discovery", stack[0], "Gather facts, themes, and source directions"),
             ("Outline and argument", stack[1] if len(stack) > 1 else stack[0], "Turn research into a clear content structure"),
-            ("Long-form draft", stack[1] if len(stack) > 1 else stack[0], "Generate a polished article draft")
+            ("Long-form draft", stack[1] if len(stack) > 1 else stack[0], "Generate a polished article draft"),
         ],
         "Research + AI agent / prompt / config": [
             ("Research discovery", stack[0], "Gather relevant patterns, examples, and source logic"),
             ("System design draft", stack[1] if len(stack) > 1 else stack[0], "Convert findings into an agent or prompt structure"),
-            ("Final prompt pack", stack[1] if len(stack) > 1 else stack[0], "Produce deployable prompt/config output")
+            ("Final prompt pack", stack[1] if len(stack) > 1 else stack[0], "Produce deployable prompt/config output"),
         ],
         "Research + slide deck / pitch": [
             ("Research discovery", stack[0], "Collect facts, angles, and supporting points"),
             ("Narrative shaping", stack[0], "Organize a story arc for the pitch"),
-            ("Deck generation", stack[1] if len(stack) > 1 else stack[0], "Create the slide-ready structure")
+            ("Deck generation", stack[1] if len(stack) > 1 else stack[0], "Create the slide-ready structure"),
         ],
         "Research + social media sequence": [
             ("Topic research", stack[0], "Identify themes, talking points, and positioning"),
             ("Content adaptation", stack[1] if len(stack) > 1 else stack[0], "Convert the research into post-ready pieces"),
-            ("Final sequence", stack[1] if len(stack) > 1 else stack[0], "Produce the social post set")
+            ("Final sequence", stack[1] if len(stack) > 1 else stack[0], "Produce the social post set"),
         ],
         "Custom": [
             ("Step 1", stack[0], "Define the first handoff"),
             ("Step 2", stack[1] if len(stack) > 1 else stack[0], "Define the second handoff"),
-            ("Step 3", stack[0], "Define the final output stage")
-        ]
+            ("Step 3", stack[0], "Define the final output stage"),
+        ],
     }
 
-    chosen = step_templates.get(goal, step_templates["Custom"])
-    workflow = []
+    chosen = templates.get(goal, templates["Custom"])
+    steps = []
     for idx, (name, tool, purpose) in enumerate(chosen, start=1):
-        workflow.append({
+        steps.append({
             "id": str(uuid.uuid4())[:8],
             "order": idx,
             "name": name,
             "tool": tool,
             "purpose": purpose,
             "input_from": "User objective" if idx == 1 else f"Step {idx-1}",
-            "status": "Ready",
-            "output_label": f"Step {idx} output"
+            "output_label": f"Step {idx} output",
         })
-    return workflow
+    return steps
 
 def resequence_steps():
     for idx, step in enumerate(st.session_state.workflow_steps, start=1):
@@ -314,9 +292,8 @@ def add_workflow_step():
         "name": f"Step {next_index}",
         "tool": fallback_tool,
         "purpose": "Describe what this step does",
-        "input_from": f"Step {next_index-1}" if next_index > 1 else "User objective",
-        "status": "Ready",
-        "output_label": f"Step {next_index} output"
+        "input_from": "User objective" if next_index == 1 else f"Step {next_index-1}",
+        "output_label": f"Step {next_index} output",
     })
 
 def remove_last_step():
@@ -349,20 +326,16 @@ def validate_workflow():
 
 def simulate_step_output(step, objective, prior_output):
     mode = st.session_state.connector_modes.get(step["tool"], "Demo")
-    base = f"{step['tool']} handled '{step['name']}' for the objective: {objective.strip()}."
-    purpose = f" Purpose: {step['purpose'].strip()}."
-    chain = f" Input source: {step['input_from']}."
     behavior = DEMO_TOOL_BEHAVIOR.get(step["tool"], "General processing")
-
-    if mode == "Live":
-        mode_text = " Connector mode: Live."
-    elif mode == "Manual":
-        mode_text = " Connector mode: Manual handoff."
-    else:
-        mode_text = " Connector mode: Demo simulation."
-
     inherited = " It used the previous handoff to refine the next deliverable." if prior_output else ""
-    return f"{base}{purpose}{chain}{mode_text} Simulated role: {behavior}.{inherited}"
+
+    return (
+        f"{step['tool']} handled '{step['name']}' for the objective: {objective}. "
+        f"Purpose: {step['purpose']}. "
+        f"Input source: {step['input_from']}. "
+        f"Connector mode: {mode}. "
+        f"Simulated role: {behavior}.{inherited}"
+    )
 
 def run_demo_workflow():
     st.session_state.execution_log = []
@@ -375,7 +348,7 @@ def run_demo_workflow():
 
     for idx, step in enumerate(st.session_state.workflow_steps, start=1):
         step_output = simulate_step_output(step, objective, prior_output)
-        log_item = {
+        st.session_state.execution_log.append({
             "step": step["order"],
             "name": step["name"],
             "tool": step["tool"],
@@ -383,22 +356,21 @@ def run_demo_workflow():
             "input_from": step["input_from"],
             "purpose": step["purpose"],
             "status": "Completed",
-            "output": step_output
-        }
-        st.session_state.execution_log.append(log_item)
+            "output": step_output,
+        })
         prior_output = step_output
         pct = int((idx / total_steps) * 100)
         progress.progress(pct, text=f"Running step {idx} of {total_steps}: {step['name']}")
-        time.sleep(0.35)
+        time.sleep(0.25)
 
     progress.empty()
 
     artifact_lines = [
         f"Objective: {objective}",
-        f"Goal type: {st.session_state.goal or 'Not specified'}",
+        f"Goal type: {st.session_state.goal}",
         f"Output format requested: {st.session_state.output_format}",
         "",
-        "Orchestration summary:"
+        "Orchestration summary:",
     ]
 
     for item in st.session_state.execution_log:
@@ -408,9 +380,7 @@ def run_demo_workflow():
 
     artifact_lines.append("")
     artifact_lines.append("Final artifact preview:")
-    artifact_lines.append(
-        "This is a simulated final artifact representing the combined result of the selected tool chain."
-    )
+    artifact_lines.append("This is a simulated final artifact representing the combined result of the selected tool chain.")
 
     st.session_state.final_artifact = "\n".join(artifact_lines)
     st.session_state.run_counter += 1
@@ -429,29 +399,28 @@ def get_current_stage():
         return 2
     if not st.session_state.objective_widget.strip():
         return 4
-    if not st.session_state.workflow_confirmed:
-        return 5
     return 5
 
 def next_action_message():
     if not st.session_state.goal:
-        return "Choose your primary goal to let Nexus OS suggest a workflow."
+        return "Choose your primary goal to generate a recommended workflow."
     if not st.session_state.selected_stack:
-        return "Review the suggested stack and confirm which tools you want in play."
+        return "Confirm the tools you want in this workflow."
     if not st.session_state.objective_widget.strip():
-        return "Describe the exact outcome you want so Nexus OS can run the orchestration."
-    if not st.session_state.workflow_steps:
-        return "Load or generate the workflow so you can review the handoff chain."
+        return "Describe the result you want Nexus OS to produce."
     if not st.session_state.workflow_confirmed:
-        return "Validate the workflow once, then run the orchestrator."
+        return "Review the workflow, validate it, then run the orchestrator."
     return "You are ready to run the orchestrator."
+
+st.title("🧠 Nexus OS")
+st.caption("A guided orchestrator for multi-tool workflows")
 
 with st.sidebar:
     st.header("System")
     st.write("Nexus OS MVP")
-    st.caption("Responsive production-oriented mode")
+    st.caption("Stable fallback mode")
 
-    if st.button("Reset app", width="stretch"):
+    if st.button("Reset app"):
         for k in list(st.session_state.keys()):
             del st.session_state[k]
         st.rerun()
@@ -466,16 +435,10 @@ with st.sidebar:
 
 st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
 st.subheader("Setup path")
-st.markdown('<div class="small-muted">A simple 5-step flow for desktop and mobile. Advanced details stay collapsed unless needed.</div>', unsafe_allow_html=True)
+st.markdown('<div class="small-muted">A simple guided flow with optional advanced editing.</div>', unsafe_allow_html=True)
 
 current_stage = get_current_stage()
-step_labels = [
-    "1. Goal",
-    "2. Stack",
-    "3. Modes",
-    "4. Objective",
-    "5. Review & Run"
-]
+step_labels = ["1. Goal", "2. Stack", "3. Modes", "4. Objective", "5. Review & Run"]
 
 for idx, label in enumerate(step_labels, start=1):
     if idx < current_stage:
@@ -486,14 +449,13 @@ for idx, label in enumerate(step_labels, start=1):
         cls = "step-chip step-later"
     st.markdown(f"<span class='{cls}'>{label}</span>", unsafe_allow_html=True)
 
-st.markdown('<div class="next-box section-gap">', unsafe_allow_html=True)
+st.markdown('<div class="next-box">', unsafe_allow_html=True)
 st.write(f"**Recommended next action:** {next_action_message()}")
 st.markdown('</div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
 st.subheader("1. Goal and output")
-st.markdown('<div class="small-muted">Start here. This generates the recommended stack and initial workflow.</div>', unsafe_allow_html=True)
 
 goal_index = GOAL_OPTIONS.index(st.session_state.goal) if st.session_state.goal in GOAL_OPTIONS else 0
 chosen_goal = st.selectbox("Primary goal", GOAL_OPTIONS, index=goal_index)
@@ -506,7 +468,7 @@ opt_options = ["Accuracy", "Speed", "Cost", "Balanced"]
 opt_index = opt_options.index(st.session_state.optimization_pref) if st.session_state.optimization_pref in opt_options else 0
 chosen_opt = st.selectbox("Optimize for", opt_options, index=opt_index)
 
-if st.button("Save goal and generate stack", type="primary", width="stretch"):
+if st.button("Save goal and generate stack", type="primary"):
     suggested, alternatives = get_tool_recommendations(chosen_goal)
     st.session_state.goal = chosen_goal
     st.session_state.output_format = chosen_output
@@ -534,26 +496,21 @@ if st.session_state.goal:
             for tool in st.session_state.alternative_stack:
                 st.markdown(f'<span class="tag">{tool}</span>', unsafe_allow_html=True)
 
-    selected_stack = st.multiselect(
+    st.session_state.selected_stack = st.multiselect(
         "Choose the tools you want in this workflow",
         TOOL_OPTIONS,
         default=st.session_state.selected_stack
     )
-    st.session_state.selected_stack = selected_stack
 
     with st.expander("Optional: add tools by typing names", expanded=False):
-        raw_tool_input = st.text_input(
-            "Typed tools",
-            placeholder="Example: canva, merlin"
-        )
-        if st.button("Add typed tools", width="stretch"):
+        raw_tool_input = st.text_input("Typed tools", placeholder="Example: canva, merlin")
+        if st.button("Add typed tools"):
             recognized, unrecognized = parse_tool_identifiers(raw_tool_input)
             st.session_state.recognized_tools = recognized
             st.session_state.unrecognized_tools = unrecognized
-            merged = list(dict.fromkeys(st.session_state.selected_stack + recognized))
-            st.session_state.selected_stack = merged
+            st.session_state.selected_stack = list(dict.fromkeys(st.session_state.selected_stack + recognized))
             if not st.session_state.workflow_steps:
-                st.session_state.workflow_steps = build_default_workflow(st.session_state.goal, merged)
+                st.session_state.workflow_steps = build_default_workflow(st.session_state.goal, st.session_state.selected_stack)
             st.rerun()
 
         if st.session_state.recognized_tools:
@@ -566,16 +523,14 @@ if st.session_state.goal:
 if st.session_state.selected_stack:
     st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
     st.subheader("3. Connector modes")
-    st.markdown('<div class="small-muted">Keep this practical: Live for true integrations, Manual for your existing UI-based tools, Demo while still designing the flow.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="small-muted">Live = API, Manual = human handoff, Demo = simulated connector.</div>', unsafe_allow_html=True)
 
     for tool in st.session_state.selected_stack:
-        st.markdown(f"<div class='compact-label'>{tool}</div>", unsafe_allow_html=True)
         st.session_state.connector_modes[tool] = st.selectbox(
             f"Mode for {tool}",
             ["Live", "Manual", "Demo"],
             index=["Live", "Manual", "Demo"].index(st.session_state.connector_modes.get(tool, "Demo")),
-            key=f"mode_{tool}",
-            label_visibility="collapsed"
+            key=f"mode_{tool}"
         )
 
     st.markdown('</div>', unsafe_allow_html=True)
@@ -583,7 +538,6 @@ if st.session_state.selected_stack:
 if st.session_state.selected_stack:
     st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
     st.subheader("4. Objective")
-    st.markdown('<div class="small-muted">Describe the final result you want. Keep it outcome-oriented.</div>', unsafe_allow_html=True)
 
     if not st.session_state.objective_widget and st.session_state.objective_input:
         st.session_state.objective_widget = st.session_state.objective_input
@@ -602,7 +556,6 @@ if st.session_state.selected_stack:
 if st.session_state.selected_stack:
     st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
     st.subheader("5. Review and run")
-    st.markdown('<div class="small-muted">Review the generated workflow. Use advanced editing only when you truly want to fine-tune the chain.</div>', unsafe_allow_html=True)
 
     if not st.session_state.workflow_steps:
         st.session_state.workflow_steps = build_default_workflow(
@@ -620,15 +573,15 @@ if st.session_state.selected_stack:
         st.markdown('</div>', unsafe_allow_html=True)
 
     with st.expander("Advanced workflow editing", expanded=False):
-        if st.button("Add step", width="stretch"):
+        if st.button("Add step"):
             add_workflow_step()
             st.rerun()
 
-        if st.button("Remove last step", width="stretch"):
+        if st.button("Remove last step"):
             remove_last_step()
             st.rerun()
 
-        if st.button("Reload recommended workflow", width="stretch"):
+        if st.button("Reload recommended workflow"):
             st.session_state.workflow_steps = build_default_workflow(
                 st.session_state.goal or "Custom",
                 st.session_state.selected_stack or ["Perplexity"]
@@ -638,8 +591,6 @@ if st.session_state.selected_stack:
 
         for idx, step in enumerate(st.session_state.workflow_steps):
             st.markdown('<div class="step-card">', unsafe_allow_html=True)
-            st.markdown(f"**Advanced edit: Step {idx + 1}**")
-
             step["name"] = st.text_input(
                 f"Step {idx + 1} name",
                 value=step["name"],
@@ -676,7 +627,7 @@ if st.session_state.selected_stack:
 
     resequence_steps()
 
-    if st.button("Validate workflow", type="primary", width="stretch"):
+    if st.button("Validate workflow", type="primary"):
         ok, message = validate_workflow()
         if ok:
             st.session_state.workflow_confirmed = True
@@ -685,7 +636,7 @@ if st.session_state.selected_stack:
             st.session_state.workflow_confirmed = False
             st.error(message)
 
-    if st.button("Run orchestrator", width="stretch"):
+    if st.button("Run orchestrator"):
         ok, message = validate_workflow()
         if not ok:
             st.session_state.workflow_confirmed = False
@@ -731,16 +682,7 @@ with st.expander("Plan snapshot", expanded=False):
     st.write(f"**Optimization:** {st.session_state.optimization_pref}")
     st.write(f"**Run count:** {st.session_state.run_counter}")
 
-    st.markdown("**Stack in play:**")
-    if st.session_state.selected_stack:
-        for tool in st.session_state.selected_stack:
-            mode = st.session_state.connector_modes.get(tool, 'Demo')
-            st.markdown(f"**{tool}** — {mode_badge(mode)}", unsafe_allow_html=True)
-    else:
-        st.caption("No stack selected yet.")
-
 with st.expander("Operating model", expanded=False):
     st.write("- Live = real API or direct integrated execution.")
     st.write("- Manual = you use the tool yourself and Nexus OS tracks the handoff.")
-    st.write("- Demo = simulated execution while the orchestration logic is being refined.")
-    st.write("- Mobile view is simplified to reduce side-by-side layout issues.")
+    st.write("- Demo = simulated execution while refining the orchestration logic.")
