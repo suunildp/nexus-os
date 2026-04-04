@@ -64,6 +64,18 @@ st.markdown("""
     color: #f87171;
     font-weight: 600;
 }
+.mode-live {
+    color: #4ade80;
+    font-weight: 600;
+}
+.mode-manual {
+    color: #fbbf24;
+    font-weight: 600;
+}
+.mode-demo {
+    color: #93c5fd;
+    font-weight: 600;
+}
 .mono {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     font-size: 0.88rem;
@@ -129,6 +141,20 @@ DEMO_TOOL_BEHAVIOR = {
     "Merlin": "Quick assistant support"
 }
 
+DEFAULT_CONNECTOR_MODES = {
+    "Perplexity": "Demo",
+    "Gemini": "Manual",
+    "Claude": "Manual",
+    "ChatGPT": "Manual",
+    "Julius AI": "Manual",
+    "Canva": "Manual",
+    "Gamma AI": "Manual",
+    "AIPPT": "Manual",
+    "NotebookLM": "Manual",
+    "Grok": "Manual",
+    "Merlin": "Manual"
+}
+
 default_state = {
     "goal": "",
     "output_format": "Text",
@@ -140,10 +166,12 @@ default_state = {
     "unrecognized_tools": [],
     "workflow_confirmed": False,
     "objective_input": "",
+    "objective_widget": "",
     "workflow_steps": [],
     "execution_log": [],
     "final_artifact": "",
-    "run_counter": 0
+    "run_counter": 0,
+    "connector_modes": copy.deepcopy(DEFAULT_CONNECTOR_MODES)
 }
 
 for key, value in default_state.items():
@@ -163,13 +191,6 @@ def get_tool_recommendations(goal):
         return ["Perplexity", "Gemini"], ["ChatGPT", "Grok"]
     else:
         return ["Perplexity"], ["Gemini", "Claude", "ChatGPT"]
-
-def swap_tool(old_tool, new_tool):
-    updated = st.session_state.suggested_stack.copy()
-    if old_tool in updated:
-        idx = updated.index(old_tool)
-        updated[idx] = new_tool
-        st.session_state.suggested_stack = updated
 
 def parse_tool_identifiers(raw_text):
     cleaned = raw_text.strip().lower()
@@ -274,7 +295,9 @@ def resequence_steps():
             step["input_from"] = f"Step {idx-1}"
 
 def validate_workflow():
-    if not st.session_state.objective_input.strip():
+    objective = st.session_state.get("objective_widget", "").strip()
+
+    if not objective:
         return False, "Please enter your objective."
     if not st.session_state.workflow_steps:
         return False, "Please add at least one workflow step."
@@ -286,32 +309,43 @@ def validate_workflow():
             return False, f"Step {step['order']} needs a purpose."
         if step["tool"] not in TOOL_OPTIONS:
             return False, f"Step {step['order']} has an invalid tool."
+
+    st.session_state.objective_input = objective
     return True, "Workflow looks good."
 
 def simulate_step_output(step, objective, prior_output):
+    mode = st.session_state.connector_modes.get(step["tool"], "Demo")
     base = f"{step['tool']} handled '{step['name']}' for the objective: {objective.strip()}."
     purpose = f" Purpose: {step['purpose'].strip()}."
     chain = f" Input source: {step['input_from']}."
-    inherited = ""
-    if prior_output:
-        inherited = f" It used the previous handoff to refine the next deliverable."
     behavior = DEMO_TOOL_BEHAVIOR.get(step["tool"], "General processing")
-    return f"{base}{purpose}{chain} Simulated role: {behavior}.{inherited}"
+
+    if mode == "Live":
+        mode_text = " Connector mode: Live."
+    elif mode == "Manual":
+        mode_text = " Connector mode: Manual handoff."
+    else:
+        mode_text = " Connector mode: Demo simulation."
+
+    inherited = " It used the previous handoff to refine the next deliverable." if prior_output else ""
+    return f"{base}{purpose}{chain}{mode_text} Simulated role: {behavior}.{inherited}"
 
 def run_demo_workflow():
     st.session_state.execution_log = []
     st.session_state.final_artifact = ""
     prior_output = ""
+    objective = st.session_state.get("objective_widget", "").strip()
 
     progress = st.progress(0, text="Starting orchestration...")
     total_steps = len(st.session_state.workflow_steps)
 
     for idx, step in enumerate(st.session_state.workflow_steps, start=1):
-        step_output = simulate_step_output(step, st.session_state.objective_input, prior_output)
+        step_output = simulate_step_output(step, objective, prior_output)
         log_item = {
             "step": step["order"],
             "name": step["name"],
             "tool": step["tool"],
+            "mode": st.session_state.connector_modes.get(step["tool"], "Demo"),
             "input_from": step["input_from"],
             "purpose": step["purpose"],
             "status": "Completed",
@@ -326,7 +360,7 @@ def run_demo_workflow():
     progress.empty()
 
     artifact_lines = [
-        f"Objective: {st.session_state.objective_input.strip()}",
+        f"Objective: {objective}",
         f"Goal type: {st.session_state.goal or 'Not specified'}",
         f"Output format requested: {st.session_state.output_format}",
         "",
@@ -335,7 +369,7 @@ def run_demo_workflow():
 
     for item in st.session_state.execution_log:
         artifact_lines.append(
-            f"{item['step']}. {item['name']} | Tool: {item['tool']} | Outcome: {item['output']}"
+            f"{item['step']}. {item['name']} | Tool: {item['tool']} | Mode: {item['mode']} | Outcome: {item['output']}"
         )
 
     artifact_lines.append("")
@@ -347,38 +381,50 @@ def run_demo_workflow():
     st.session_state.final_artifact = "\n".join(artifact_lines)
     st.session_state.run_counter += 1
 
+def mode_badge(mode):
+    if mode == "Live":
+        return "<span class='mode-live'>Live</span>"
+    if mode == "Manual":
+        return "<span class='mode-manual'>Manual</span>"
+    return "<span class='mode-demo'>Demo</span>"
+
 with st.sidebar:
     st.header("System")
     st.write("Nexus OS MVP")
-    st.caption("Demo orchestration mode")
+    st.caption("Mixed-connector orchestration mode")
 
     if st.button("Reset app"):
         for k in list(st.session_state.keys()):
             del st.session_state[k]
         st.rerun()
 
-    st.markdown("### Mode")
-    st.markdown("<span class='info'>Demo orchestration</span>", unsafe_allow_html=True)
-    st.caption("This version models your workflow and handoffs before live APIs are added.")
+    st.markdown("### Model")
+    st.caption("This version supports three connector states: Live, Manual, and Demo.")
 
     st.markdown("### Current stack")
     if st.session_state.selected_stack:
         for tool in st.session_state.selected_stack:
-            st.markdown(f"<span class='tag'>{tool}</span>", unsafe_allow_html=True)
+            mode = st.session_state.connector_modes.get(tool, "Demo")
+            st.markdown(f"**{tool}** — {mode_badge(mode)}", unsafe_allow_html=True)
     else:
         st.caption("No tools selected yet.")
 
 st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
 st.subheader("Workflow setup")
-st.markdown('<div class="small-muted">Choose the outcome you want, the stack you prefer, and let Nexus OS model the handoff chain.</div>', unsafe_allow_html=True)
+st.markdown('<div class="small-muted">Choose the outcome you want, the stack you prefer, and the way each tool will participate.</div>', unsafe_allow_html=True)
 
 col_a, col_b, col_c = st.columns(3)
 with col_a:
-    goal = st.selectbox("Primary goal", GOAL_OPTIONS, index=0 if not st.session_state.goal else GOAL_OPTIONS.index(st.session_state.goal))
+    goal_index = GOAL_OPTIONS.index(st.session_state.goal) if st.session_state.goal in GOAL_OPTIONS else 0
+    goal = st.selectbox("Primary goal", GOAL_OPTIONS, index=goal_index)
 with col_b:
-    output_format = st.selectbox("Desired output", ["Text", "Markdown", "JSON", "Slide Outline", "Agent Prompt"])
+    output_options = ["Text", "Markdown", "JSON", "Slide Outline", "Agent Prompt"]
+    output_index = output_options.index(st.session_state.output_format) if st.session_state.output_format in output_options else 0
+    output_format = st.selectbox("Desired output", output_options, index=output_index)
 with col_c:
-    optimization_pref = st.selectbox("Optimize for", ["Accuracy", "Speed", "Cost", "Balanced"])
+    opt_options = ["Accuracy", "Speed", "Cost", "Balanced"]
+    opt_index = opt_options.index(st.session_state.optimization_pref) if st.session_state.optimization_pref in opt_options else 0
+    optimization_pref = st.selectbox("Optimize for", opt_options, index=opt_index)
 
 if st.button("Generate suggested stack", type="primary"):
     suggested, alternatives = get_tool_recommendations(goal)
@@ -434,19 +480,46 @@ if st.session_state.suggested_stack:
 st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
+st.subheader("Connector policy")
+st.markdown('<div class="small-muted">Set how each tool participates right now based on your actual subscriptions and access.</div>', unsafe_allow_html=True)
+
+if st.session_state.selected_stack:
+    for tool in st.session_state.selected_stack:
+        c1, c2 = st.columns([1.2, 2])
+        with c1:
+            st.write(f"**{tool}**")
+        with c2:
+            st.session_state.connector_modes[tool] = st.selectbox(
+                f"Mode for {tool}",
+                ["Live", "Manual", "Demo"],
+                index=["Live", "Manual", "Demo"].index(st.session_state.connector_modes.get(tool, "Demo")),
+                key=f"mode_{tool}"
+            )
+else:
+    st.caption("Choose or generate a stack first.")
+
+st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
 st.subheader("Objective")
-st.session_state.objective_input = st.text_area(
+
+if not st.session_state.objective_widget and st.session_state.objective_input:
+    st.session_state.objective_widget = st.session_state.objective_input
+
+st.text_area(
     "Describe the result you want Nexus OS to produce",
-    value=st.session_state.objective_input,
-    placeholder="Example: Research AI adoption in India, draft a blog post, then convert it into a slide-ready outline.",
+    key="objective_widget",
+    placeholder="Example: Pitch deck for solution on impact of AI to reduce training timelines.",
     max_chars=3000,
     height=120
 )
+
+st.session_state.objective_input = st.session_state.objective_widget
 st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
 st.subheader("Workflow builder")
-st.markdown('<div class="small-muted">Edit the handoff chain so it mirrors how you currently jump between tools.</div>', unsafe_allow_html=True)
+st.markdown('<div class="small-muted">Edit the handoff chain so it mirrors how you currently jump between tools and where human/manual steps still exist.</div>', unsafe_allow_html=True)
 
 col_x, col_y, col_z = st.columns([1, 1, 2])
 with col_x:
@@ -514,7 +587,8 @@ for idx, step in enumerate(st.session_state.workflow_steps):
             key=f"output_{step['id']}"
         )
 
-    st.caption(f"Simulated role: {DEMO_TOOL_BEHAVIOR.get(step['tool'], 'General processing')}")
+    mode = st.session_state.connector_modes.get(step["tool"], "Demo")
+    st.caption(f"Connector mode: {mode} | Simulated role: {DEMO_TOOL_BEHAVIOR.get(step['tool'], 'General processing')}")
     st.markdown('</div>', unsafe_allow_html=True)
 
 resequence_steps()
@@ -542,7 +616,7 @@ col_main, col_side = st.columns([1.4, 1])
 with col_main:
     st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
     st.subheader("Execution")
-    st.markdown('<div class="small-muted">Run the workflow in demo mode to inspect each handoff and the resulting artifact.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="small-muted">Run the workflow in demo mode to inspect each handoff, including manual and demo steps.</div>', unsafe_allow_html=True)
 
     if st.button("Run orchestrator", type="primary"):
         ok, message = validate_workflow()
@@ -558,6 +632,7 @@ with col_main:
         st.markdown('<div class="section-label">Execution log</div>', unsafe_allow_html=True)
         for item in st.session_state.execution_log:
             with st.expander(f"Step {item['step']} · {item['name']} · {item['tool']}", expanded=False):
+                st.write(f"**Mode:** {item['mode']}")
                 st.write(f"**Input from:** {item['input_from']}")
                 st.write(f"**Purpose:** {item['purpose']}")
                 st.write(f"**Status:** {item['status']}")
@@ -589,15 +664,16 @@ with col_side:
     st.markdown("**Stack in play:**")
     if st.session_state.selected_stack:
         for tool in st.session_state.selected_stack:
-            st.markdown(f'<span class="tag">{tool}</span>', unsafe_allow_html=True)
+            mode = st.session_state.connector_modes.get(tool, 'Demo')
+            st.markdown(f"**{tool}** — {mode_badge(mode)}", unsafe_allow_html=True)
     else:
         st.caption("No stack selected yet.")
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
-    st.subheader("Why this MVP matters")
-    st.write("- It mirrors your real multi-tool handoff behavior.")
-    st.write("- It lets you inspect workflow structure before paying for APIs.")
-    st.write("- It creates the control layer that future live connectors will plug into.")
-    st.write("- It reduces copy-paste chaos by centralizing objective, sequence, and outputs.")
+    st.subheader("Operating model")
+    st.write("- Live = real API or direct integrated execution.")
+    st.write("- Manual = you still use the tool yourself, but Nexus OS tracks the handoff.")
+    st.write("- Demo = simulated execution while the orchestration logic is being built.")
+    st.write("- This lets the orchestrator match your real-world access instead of forcing API spend everywhere.")
     st.markdown('</div>', unsafe_allow_html=True)
