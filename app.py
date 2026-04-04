@@ -7,41 +7,42 @@ import streamlit as st
 st.set_page_config(
     page_title="Nexus OS",
     page_icon="🧠",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 st.markdown("""
 <style>
 .block-container {
-    padding-top: 1.5rem;
+    padding-top: 1rem;
     padding-bottom: 2rem;
-    max-width: 1180px;
+    max-width: 1120px;
 }
 .nexus-card {
-    padding: 1rem 1.2rem;
+    padding: 0.95rem 1rem;
     border: 1px solid rgba(120,120,120,0.18);
     border-radius: 14px;
-    margin-bottom: 1rem;
+    margin-bottom: 0.9rem;
     background: rgba(255,255,255,0.03);
 }
 .small-muted {
     color: #8a8a8a;
-    font-size: 0.92rem;
+    font-size: 0.9rem;
 }
 .tag {
     display: inline-block;
-    padding: 0.3rem 0.6rem;
-    margin: 0.2rem 0.2rem 0 0;
+    padding: 0.28rem 0.58rem;
+    margin: 0.15rem 0.2rem 0 0;
     border-radius: 999px;
     border: 1px solid rgba(120,120,120,0.25);
-    font-size: 0.85rem;
+    font-size: 0.82rem;
 }
 .step-chip {
     display: inline-block;
-    padding: 0.45rem 0.75rem;
-    margin: 0.25rem 0.4rem 0.25rem 0;
+    padding: 0.42rem 0.72rem;
+    margin: 0.2rem 0.35rem 0.2rem 0;
     border-radius: 999px;
-    font-size: 0.88rem;
+    font-size: 0.84rem;
     border: 1px solid rgba(120,120,120,0.22);
 }
 .step-done {
@@ -57,10 +58,10 @@ st.markdown("""
     color: #b8b8b8;
 }
 .step-card {
-    padding: 0.85rem 1rem;
+    padding: 0.85rem 0.95rem;
     border: 1px solid rgba(120,120,120,0.18);
     border-radius: 12px;
-    margin-bottom: 0.8rem;
+    margin-bottom: 0.75rem;
     background: rgba(255,255,255,0.02);
 }
 .ok { color: #4ade80; font-weight: 600; }
@@ -74,6 +75,40 @@ st.markdown("""
     border-radius: 12px;
     border: 1px solid rgba(147,197,253,0.25);
     background: rgba(147,197,253,0.06);
+}
+.compact-label {
+    font-size: 0.82rem;
+    color: #9a9a9a;
+    margin-bottom: 0.2rem;
+}
+.section-gap {
+    margin-top: 0.4rem;
+}
+div[data-testid="stTextArea"] textarea {
+    min-height: 100px;
+}
+@media (max-width: 768px) {
+    .block-container {
+        padding-top: 0.75rem;
+        padding-bottom: 1.25rem;
+        padding-left: 0.8rem;
+        padding-right: 0.8rem;
+    }
+    .nexus-card {
+        padding: 0.85rem 0.85rem;
+        border-radius: 12px;
+        margin-bottom: 0.8rem;
+    }
+    h1 {
+        font-size: 1.6rem !important;
+    }
+    .step-chip {
+        font-size: 0.78rem;
+        padding: 0.38rem 0.58rem;
+    }
+    .tag {
+        font-size: 0.78rem;
+    }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -414,9 +449,9 @@ def next_action_message():
 with st.sidebar:
     st.header("System")
     st.write("Nexus OS MVP")
-    st.caption("Guided orchestration mode")
+    st.caption("Responsive production-oriented mode")
 
-    if st.button("Reset app"):
+    if st.button("Reset app", width="stretch"):
         for k in list(st.session_state.keys()):
             del st.session_state[k]
         st.rerun()
@@ -431,7 +466,7 @@ with st.sidebar:
 
 st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
 st.subheader("Setup path")
-st.markdown('<div class="small-muted">A practical 5-step setup. Advanced editing comes later.</div>', unsafe_allow_html=True)
+st.markdown('<div class="small-muted">A simple 5-step flow for desktop and mobile. Advanced details stay collapsed unless needed.</div>', unsafe_allow_html=True)
 
 current_stage = get_current_stage()
 step_labels = [
@@ -451,28 +486,27 @@ for idx, label in enumerate(step_labels, start=1):
         cls = "step-chip step-later"
     st.markdown(f"<span class='{cls}'>{label}</span>", unsafe_allow_html=True)
 
-st.markdown('<div class="next-box">', unsafe_allow_html=True)
+st.markdown('<div class="next-box section-gap">', unsafe_allow_html=True)
 st.write(f"**Recommended next action:** {next_action_message()}")
 st.markdown('</div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
 st.subheader("1. Goal and output")
+st.markdown('<div class="small-muted">Start here. This generates the recommended stack and initial workflow.</div>', unsafe_allow_html=True)
 
-col_a, col_b, col_c = st.columns(3)
-with col_a:
-    goal_index = GOAL_OPTIONS.index(st.session_state.goal) if st.session_state.goal in GOAL_OPTIONS else 0
-    chosen_goal = st.selectbox("Primary goal", GOAL_OPTIONS, index=goal_index)
-with col_b:
-    output_options = ["Text", "Markdown", "JSON", "Slide Outline", "Agent Prompt"]
-    output_index = output_options.index(st.session_state.output_format) if st.session_state.output_format in output_options else 0
-    chosen_output = st.selectbox("Desired output", output_options, index=output_index)
-with col_c:
-    opt_options = ["Accuracy", "Speed", "Cost", "Balanced"]
-    opt_index = opt_options.index(st.session_state.optimization_pref) if st.session_state.optimization_pref in opt_options else 0
-    chosen_opt = st.selectbox("Optimize for", opt_options, index=opt_index)
+goal_index = GOAL_OPTIONS.index(st.session_state.goal) if st.session_state.goal in GOAL_OPTIONS else 0
+chosen_goal = st.selectbox("Primary goal", GOAL_OPTIONS, index=goal_index)
 
-if st.button("Save goal and generate stack", type="primary"):
+output_options = ["Text", "Markdown", "JSON", "Slide Outline", "Agent Prompt"]
+output_index = output_options.index(st.session_state.output_format) if st.session_state.output_format in output_options else 0
+chosen_output = st.selectbox("Desired output", output_options, index=output_index)
+
+opt_options = ["Accuracy", "Speed", "Cost", "Balanced"]
+opt_index = opt_options.index(st.session_state.optimization_pref) if st.session_state.optimization_pref in opt_options else 0
+chosen_opt = st.selectbox("Optimize for", opt_options, index=opt_index)
+
+if st.button("Save goal and generate stack", type="primary", width="stretch"):
     suggested, alternatives = get_tool_recommendations(chosen_goal)
     st.session_state.goal = chosen_goal
     st.session_state.output_format = chosen_output
@@ -496,9 +530,9 @@ if st.session_state.goal:
             st.markdown(f'<span class="tag">{tool}</span>', unsafe_allow_html=True)
 
     if st.session_state.alternative_stack:
-        st.write("**Alternatives**")
-        for tool in st.session_state.alternative_stack:
-            st.markdown(f'<span class="tag">{tool}</span>', unsafe_allow_html=True)
+        with st.expander("Show alternatives", expanded=False):
+            for tool in st.session_state.alternative_stack:
+                st.markdown(f'<span class="tag">{tool}</span>', unsafe_allow_html=True)
 
     selected_stack = st.multiselect(
         "Choose the tools you want in this workflow",
@@ -507,51 +541,49 @@ if st.session_state.goal:
     )
     st.session_state.selected_stack = selected_stack
 
-    raw_tool_input = st.text_input(
-        "Optional: add tools by typing names",
-        placeholder="Example: canva, merlin"
-    )
+    with st.expander("Optional: add tools by typing names", expanded=False):
+        raw_tool_input = st.text_input(
+            "Typed tools",
+            placeholder="Example: canva, merlin"
+        )
+        if st.button("Add typed tools", width="stretch"):
+            recognized, unrecognized = parse_tool_identifiers(raw_tool_input)
+            st.session_state.recognized_tools = recognized
+            st.session_state.unrecognized_tools = unrecognized
+            merged = list(dict.fromkeys(st.session_state.selected_stack + recognized))
+            st.session_state.selected_stack = merged
+            if not st.session_state.workflow_steps:
+                st.session_state.workflow_steps = build_default_workflow(st.session_state.goal, merged)
+            st.rerun()
 
-    if st.button("Add typed tools"):
-        recognized, unrecognized = parse_tool_identifiers(raw_tool_input)
-        st.session_state.recognized_tools = recognized
-        st.session_state.unrecognized_tools = unrecognized
-        merged = list(dict.fromkeys(st.session_state.selected_stack + recognized))
-        st.session_state.selected_stack = merged
-        if not st.session_state.workflow_steps:
-            st.session_state.workflow_steps = build_default_workflow(st.session_state.goal, merged)
-        st.rerun()
-
-    if st.session_state.recognized_tools:
-        st.caption("Recognized tools: " + ", ".join(st.session_state.recognized_tools))
-    if st.session_state.unrecognized_tools:
-        st.caption("Unrecognized entries: " + ", ".join(st.session_state.unrecognized_tools))
+        if st.session_state.recognized_tools:
+            st.caption("Recognized tools: " + ", ".join(st.session_state.recognized_tools))
+        if st.session_state.unrecognized_tools:
+            st.caption("Unrecognized entries: " + ", ".join(st.session_state.unrecognized_tools))
 
     st.markdown('</div>', unsafe_allow_html=True)
 
 if st.session_state.selected_stack:
     st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
     st.subheader("3. Connector modes")
-    st.markdown('<div class="small-muted">Choose how each tool participates right now: real integration, manual handoff, or demo.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="small-muted">Keep this practical: Live for true integrations, Manual for your existing UI-based tools, Demo while still designing the flow.</div>', unsafe_allow_html=True)
 
     for tool in st.session_state.selected_stack:
-        c1, c2 = st.columns([1.2, 2])
-        with c1:
-            st.write(f"**{tool}**")
-        with c2:
-            st.session_state.connector_modes[tool] = st.selectbox(
-                f"Mode for {tool}",
-                ["Live", "Manual", "Demo"],
-                index=["Live", "Manual", "Demo"].index(st.session_state.connector_modes.get(tool, "Demo")),
-                key=f"mode_{tool}"
-            )
+        st.markdown(f"<div class='compact-label'>{tool}</div>", unsafe_allow_html=True)
+        st.session_state.connector_modes[tool] = st.selectbox(
+            f"Mode for {tool}",
+            ["Live", "Manual", "Demo"],
+            index=["Live", "Manual", "Demo"].index(st.session_state.connector_modes.get(tool, "Demo")),
+            key=f"mode_{tool}",
+            label_visibility="collapsed"
+        )
 
     st.markdown('</div>', unsafe_allow_html=True)
 
 if st.session_state.selected_stack:
     st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
     st.subheader("4. Objective")
-    st.markdown('<div class="small-muted">Describe the final result you want. The workflow will use this as the anchor.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="small-muted">Describe the final result you want. Keep it outcome-oriented.</div>', unsafe_allow_html=True)
 
     if not st.session_state.objective_widget and st.session_state.objective_input:
         st.session_state.objective_widget = st.session_state.objective_input
@@ -570,7 +602,7 @@ if st.session_state.selected_stack:
 if st.session_state.selected_stack:
     st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
     st.subheader("5. Review and run")
-    st.markdown('<div class="small-muted">The workflow is auto-generated for you. Use advanced editing only if you want to fine-tune the handoff chain.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="small-muted">Review the generated workflow. Use advanced editing only when you truly want to fine-tune the chain.</div>', unsafe_allow_html=True)
 
     if not st.session_state.workflow_steps:
         st.session_state.workflow_steps = build_default_workflow(
@@ -578,7 +610,6 @@ if st.session_state.selected_stack:
             st.session_state.selected_stack or ["Perplexity"]
         )
 
-    st.write("**Workflow preview**")
     for step in st.session_state.workflow_steps:
         mode = st.session_state.connector_modes.get(step["tool"], "Demo")
         st.markdown('<div class="step-card">', unsafe_allow_html=True)
@@ -588,128 +619,113 @@ if st.session_state.selected_stack:
         st.write(f"Input source: {step['input_from']}")
         st.markdown('</div>', unsafe_allow_html=True)
 
-    with st.expander("Advanced workflow editing"):
-        col_x, col_y, col_z = st.columns([1, 1, 2])
-        with col_x:
-            if st.button("Add step"):
-                add_workflow_step()
-                st.rerun()
-        with col_y:
-            if st.button("Remove last step"):
-                remove_last_step()
-                st.rerun()
-        with col_z:
-            if st.button("Reload recommended workflow"):
-                st.session_state.workflow_steps = build_default_workflow(
-                    st.session_state.goal or "Custom",
-                    st.session_state.selected_stack or ["Perplexity"]
-                )
-                st.session_state.workflow_confirmed = False
-                st.rerun()
+    with st.expander("Advanced workflow editing", expanded=False):
+        if st.button("Add step", width="stretch"):
+            add_workflow_step()
+            st.rerun()
+
+        if st.button("Remove last step", width="stretch"):
+            remove_last_step()
+            st.rerun()
+
+        if st.button("Reload recommended workflow", width="stretch"):
+            st.session_state.workflow_steps = build_default_workflow(
+                st.session_state.goal or "Custom",
+                st.session_state.selected_stack or ["Perplexity"]
+            )
+            st.session_state.workflow_confirmed = False
+            st.rerun()
 
         for idx, step in enumerate(st.session_state.workflow_steps):
             st.markdown('<div class="step-card">', unsafe_allow_html=True)
             st.markdown(f"**Advanced edit: Step {idx + 1}**")
 
-            c1, c2 = st.columns([2, 1])
-            with c1:
-                step["name"] = st.text_input(
-                    f"Step {idx + 1} name",
-                    value=step["name"],
-                    key=f"name_{step['id']}"
-                )
-            with c2:
-                step["tool"] = st.selectbox(
-                    f"Tool for step {idx + 1}",
-                    TOOL_OPTIONS,
-                    index=TOOL_OPTIONS.index(step["tool"]) if step["tool"] in TOOL_OPTIONS else 0,
-                    key=f"tool_{step['id']}"
-                )
+            step["name"] = st.text_input(
+                f"Step {idx + 1} name",
+                value=step["name"],
+                key=f"name_{step['id']}"
+            )
+            step["tool"] = st.selectbox(
+                f"Tool for step {idx + 1}",
+                TOOL_OPTIONS,
+                index=TOOL_OPTIONS.index(step["tool"]) if step["tool"] in TOOL_OPTIONS else 0,
+                key=f"tool_{step['id']}"
+            )
+            step["purpose"] = st.text_area(
+                f"Purpose for step {idx + 1}",
+                value=step["purpose"],
+                key=f"purpose_{step['id']}",
+                height=100
+            )
 
-            c3, c4 = st.columns([2, 1])
-            with c3:
-                step["purpose"] = st.text_area(
-                    f"Purpose for step {idx + 1}",
-                    value=step["purpose"],
-                    key=f"purpose_{step['id']}",
-                    height=90
-                )
-            with c4:
-                input_choices = ["User objective"] + [f"Step {i}" for i in range(1, len(st.session_state.workflow_steps) + 1) if i != idx + 1]
-                if step["input_from"] not in input_choices:
-                    step["input_from"] = "User objective" if idx == 0 else f"Step {idx}"
-                step["input_from"] = st.selectbox(
-                    f"Input source for step {idx + 1}",
-                    input_choices,
-                    index=input_choices.index(step["input_from"]),
-                    key=f"input_{step['id']}"
-                )
-                step["output_label"] = st.text_input(
-                    f"Output label for step {idx + 1}",
-                    value=step["output_label"],
-                    key=f"output_{step['id']}"
-                )
+            input_choices = ["User objective"] + [f"Step {i}" for i in range(1, len(st.session_state.workflow_steps) + 1) if i != idx + 1]
+            if step["input_from"] not in input_choices:
+                step["input_from"] = "User objective" if idx == 0 else f"Step {idx}"
+            step["input_from"] = st.selectbox(
+                f"Input source for step {idx + 1}",
+                input_choices,
+                index=input_choices.index(step["input_from"]),
+                key=f"input_{step['id']}"
+            )
+            step["output_label"] = st.text_input(
+                f"Output label for step {idx + 1}",
+                value=step["output_label"],
+                key=f"output_{step['id']}"
+            )
             st.markdown('</div>', unsafe_allow_html=True)
 
     resequence_steps()
 
-    col_v1, col_v2, col_v3 = st.columns([1, 1, 2])
-    with col_v1:
-        if st.button("Validate workflow", type="primary"):
-            ok, message = validate_workflow()
-            if ok:
-                st.session_state.workflow_confirmed = True
-                st.success(message)
-            else:
-                st.session_state.workflow_confirmed = False
-                st.error(message)
-    with col_v2:
-        if st.button("Run orchestrator"):
-            ok, message = validate_workflow()
-            if not ok:
-                st.session_state.workflow_confirmed = False
-                st.error(message)
-            else:
-                st.session_state.workflow_confirmed = True
-                run_demo_workflow()
-                st.success("Demo workflow completed.")
-    with col_v3:
-        if st.session_state.workflow_confirmed:
-            st.markdown("<span class='ok'>Ready and validated.</span>", unsafe_allow_html=True)
+    if st.button("Validate workflow", type="primary", width="stretch"):
+        ok, message = validate_workflow()
+        if ok:
+            st.session_state.workflow_confirmed = True
+            st.success(message)
         else:
-            st.markdown("<span class='warn'>Validate once before running.</span>", unsafe_allow_html=True)
+            st.session_state.workflow_confirmed = False
+            st.error(message)
+
+    if st.button("Run orchestrator", width="stretch"):
+        ok, message = validate_workflow()
+        if not ok:
+            st.session_state.workflow_confirmed = False
+            st.error(message)
+        else:
+            st.session_state.workflow_confirmed = True
+            run_demo_workflow()
+            st.success("Demo workflow completed.")
+
+    if st.session_state.workflow_confirmed:
+        st.markdown("<span class='ok'>Ready and validated.</span>", unsafe_allow_html=True)
+    else:
+        st.markdown("<span class='warn'>Validate once before running.</span>", unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-col_main, col_side = st.columns([1.4, 1])
-
-with col_main:
-    if st.session_state.execution_log:
-        st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
-        st.subheader("Execution log")
-        for item in st.session_state.execution_log:
-            with st.expander(f"Step {item['step']} · {item['name']} · {item['tool']}", expanded=False):
-                st.write(f"**Mode:** {item['mode']}")
-                st.write(f"**Input from:** {item['input_from']}")
-                st.write(f"**Purpose:** {item['purpose']}")
-                st.write(f"**Status:** {item['status']}")
-                st.write(f"**Output:** {item['output']}")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    if st.session_state.final_artifact:
-        st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
-        st.subheader("Final artifact")
-        st.text_area(
-            "Artifact preview",
-            value=st.session_state.final_artifact,
-            height=320,
-            disabled=True
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
-
-with col_side:
+if st.session_state.execution_log:
     st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
-    st.subheader("Plan snapshot")
+    st.subheader("Execution log")
+    for item in st.session_state.execution_log:
+        with st.expander(f"Step {item['step']} · {item['name']} · {item['tool']}", expanded=False):
+            st.write(f"**Mode:** {item['mode']}")
+            st.write(f"**Input from:** {item['input_from']}")
+            st.write(f"**Purpose:** {item['purpose']}")
+            st.write(f"**Status:** {item['status']}")
+            st.write(f"**Output:** {item['output']}")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+if st.session_state.final_artifact:
+    st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
+    st.subheader("Final artifact")
+    st.text_area(
+        "Artifact preview",
+        value=st.session_state.final_artifact,
+        height=180,
+        disabled=True
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with st.expander("Plan snapshot", expanded=False):
     st.write(f"**Goal:** {st.session_state.goal or 'Not set'}")
     st.write(f"**Output format:** {st.session_state.output_format}")
     st.write(f"**Optimization:** {st.session_state.optimization_pref}")
@@ -722,12 +738,9 @@ with col_side:
             st.markdown(f"**{tool}** — {mode_badge(mode)}", unsafe_allow_html=True)
     else:
         st.caption("No stack selected yet.")
-    st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
-    st.subheader("Operating model")
+with st.expander("Operating model", expanded=False):
     st.write("- Live = real API or direct integrated execution.")
     st.write("- Manual = you use the tool yourself and Nexus OS tracks the handoff.")
     st.write("- Demo = simulated execution while the orchestration logic is being refined.")
-    st.write("- Advanced editing is optional, not required.")
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.write("- Mobile view is simplified to reduce side-by-side layout issues.")
