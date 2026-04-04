@@ -13,85 +13,205 @@ st.set_page_config(
 
 st.markdown("""
 <style>
+:root {
+    --panel-bg: rgba(255,255,255,0.03);
+    --panel-border: rgba(120,120,120,0.18);
+    --panel-border-strong: rgba(147,197,253,0.22);
+    --text-muted: #8f8f8f;
+    --text-soft: #b8b8b8;
+    --ok: #86efac;
+    --warn: #fbbf24;
+    --live: #4ade80;
+    --manual: #fbbf24;
+    --demo: #93c5fd;
+}
+
 .block-container {
+    padding-top: 0.65rem;
+    padding-bottom: 1.4rem;
+    max-width: 1040px;
+}
+
+section[data-testid="stSidebar"] > div {
     padding-top: 1rem;
-    padding-bottom: 2rem;
-    max-width: 1080px;
 }
+
+div[data-testid="stVerticalBlock"] > div:has(> div.nexus-card) {
+    margin-bottom: 0.55rem;
+}
+
 .nexus-card {
-    padding: 1rem;
-    border: 1px solid rgba(120,120,120,0.18);
+    padding: 0.95rem 1rem;
+    border: 1px solid var(--panel-border);
     border-radius: 14px;
-    margin-bottom: 0.9rem;
-    background: rgba(255,255,255,0.03);
-}
-.small-muted {
-    color: #8a8a8a;
-    font-size: 0.92rem;
-}
-.tag {
-    display: inline-block;
-    padding: 0.28rem 0.58rem;
-    margin: 0.15rem 0.2rem 0 0;
-    border-radius: 999px;
-    border: 1px solid rgba(120,120,120,0.25);
-    font-size: 0.82rem;
-}
-.step-chip {
-    display: inline-block;
-    padding: 0.42rem 0.72rem;
-    margin: 0.2rem 0.35rem 0.2rem 0;
-    border-radius: 999px;
-    font-size: 0.84rem;
-    border: 1px solid rgba(120,120,120,0.22);
-}
-.step-done {
-    background: rgba(74, 222, 128, 0.12);
-    color: #86efac;
-}
-.step-now {
-    background: rgba(147, 197, 253, 0.12);
-    color: #93c5fd;
-}
-.step-later {
-    background: rgba(255,255,255,0.03);
-    color: #b8b8b8;
-}
-.step-card {
-    padding: 0.85rem 0.95rem;
-    border: 1px solid rgba(120,120,120,0.18);
-    border-radius: 12px;
     margin-bottom: 0.75rem;
+    background: var(--panel-bg);
+}
+
+.hero-card {
+    padding-top: 0.8rem;
+    padding-bottom: 0.8rem;
+}
+
+.small-muted {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.45;
+}
+
+.section-title {
+    margin-bottom: 0.2rem;
+}
+
+.inline-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.35rem;
+}
+
+.tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.28rem 0.62rem;
+    border-radius: 999px;
+    border: 1px solid rgba(120,120,120,0.24);
+    font-size: 0.8rem;
+    line-height: 1.2;
+    color: #d7d7d7;
     background: rgba(255,255,255,0.02);
 }
-.next-box {
-    padding: 0.9rem 1rem;
-    border-radius: 12px;
-    border: 1px solid rgba(147,197,253,0.25);
-    background: rgba(147,197,253,0.06);
+
+.path-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.55rem;
+    margin-bottom: 0.75rem;
 }
-.ok { color: #4ade80; font-weight: 600; }
-.warn { color: #fbbf24; font-weight: 600; }
-.mode-live { color: #4ade80; font-weight: 600; }
-.mode-manual { color: #fbbf24; font-weight: 600; }
-.mode-demo { color: #93c5fd; font-weight: 600; }
+
+.step-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.42rem 0.72rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    border: 1px solid rgba(120,120,120,0.22);
+    white-space: nowrap;
+}
+
+.step-done {
+    background: rgba(74, 222, 128, 0.12);
+    color: var(--ok);
+}
+
+.step-now {
+    background: rgba(147, 197, 253, 0.12);
+    color: var(--demo);
+}
+
+.step-later {
+    background: rgba(255,255,255,0.02);
+    color: var(--text-soft);
+}
+
+.next-box {
+    padding: 0.8rem 0.9rem;
+    border-radius: 12px;
+    border: 1px solid var(--panel-border-strong);
+    background: rgba(147,197,253,0.05);
+    margin-top: 0.2rem;
+}
+
+.step-card {
+    padding: 0.78rem 0.9rem;
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    margin-bottom: 0.6rem;
+    background: rgba(255,255,255,0.018);
+}
+
+.meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin: 0.15rem 0 0.35rem 0;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+}
+
+.ok { color: var(--ok); font-weight: 600; }
+.warn { color: var(--warn); font-weight: 600; }
+.mode-live { color: var(--live); font-weight: 600; }
+.mode-manual { color: var(--manual); font-weight: 600; }
+.mode-demo { color: var(--demo); font-weight: 600; }
+
+.compact-note {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-top: -0.25rem;
+    margin-bottom: 0.45rem;
+}
 
 div[data-testid="stTextArea"] textarea {
     min-height: 100px;
 }
 
+div[data-testid="stTextInput"] input,
+div[data-testid="stSelectbox"] > div,
+div[data-testid="stMultiSelect"] > div,
+div[data-testid="stTextArea"] textarea {
+    border-radius: 10px;
+}
+
+div[data-testid="stExpander"] {
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    background: rgba(255,255,255,0.02);
+}
+
+hr {
+    margin-top: 0.7rem !important;
+    margin-bottom: 0.7rem !important;
+}
+
+h1 {
+    margin-bottom: 0.15rem !important;
+}
+
+h2, h3 {
+    margin-bottom: 0.1rem !important;
+}
+
 @media (max-width: 768px) {
     .block-container {
-        padding-top: 0.75rem;
-        padding-bottom: 1.2rem;
-        padding-left: 0.8rem;
-        padding-right: 0.8rem;
+        padding-top: 0.55rem;
+        padding-bottom: 1rem;
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
     }
+
     .nexus-card {
-        padding: 0.85rem;
+        padding: 0.82rem 0.85rem;
+        border-radius: 12px;
+        margin-bottom: 0.65rem;
     }
+
     h1 {
-        font-size: 1.6rem !important;
+        font-size: 1.72rem !important;
+    }
+
+    .step-chip {
+        font-size: 0.77rem;
+        padding: 0.38rem 0.6rem;
+    }
+
+    .tag {
+        font-size: 0.76rem;
+    }
+
+    .next-box {
+        padding: 0.72rem 0.8rem;
     }
 }
 </style>
@@ -418,7 +538,7 @@ st.caption("A guided orchestrator for multi-tool workflows")
 with st.sidebar:
     st.header("System")
     st.write("Nexus OS MVP")
-    st.caption("Stable fallback mode")
+    st.caption("Polished stable fallback mode")
 
     if st.button("Reset app"):
         for k in list(st.session_state.keys()):
@@ -433,13 +553,14 @@ with st.sidebar:
     else:
         st.caption("No tools selected yet.")
 
-st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
+st.markdown('<div class="nexus-card hero-card">', unsafe_allow_html=True)
 st.subheader("Setup path")
-st.markdown('<div class="small-muted">A simple guided flow with optional advanced editing.</div>', unsafe_allow_html=True)
+st.markdown('<div class="small-muted">A tighter guided flow with optional advanced editing.</div>', unsafe_allow_html=True)
 
 current_stage = get_current_stage()
 step_labels = ["1. Goal", "2. Stack", "3. Modes", "4. Objective", "5. Review & Run"]
 
+st.markdown('<div class="path-wrap">', unsafe_allow_html=True)
 for idx, label in enumerate(step_labels, start=1):
     if idx < current_stage:
         cls = "step-chip step-done"
@@ -448,6 +569,7 @@ for idx, label in enumerate(step_labels, start=1):
     else:
         cls = "step-chip step-later"
     st.markdown(f"<span class='{cls}'>{label}</span>", unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="next-box">', unsafe_allow_html=True)
 st.write(f"**Recommended next action:** {next_action_message()}")
@@ -455,7 +577,10 @@ st.markdown('</div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
+st.markdown('<div class="section-title">', unsafe_allow_html=True)
 st.subheader("1. Goal and output")
+st.markdown('</div>', unsafe_allow_html=True)
+st.markdown('<div class="small-muted">Start here to generate a recommended stack and starter workflow.</div>', unsafe_allow_html=True)
 
 goal_index = GOAL_OPTIONS.index(st.session_state.goal) if st.session_state.goal in GOAL_OPTIONS else 0
 chosen_goal = st.selectbox("Primary goal", GOAL_OPTIONS, index=goal_index)
@@ -487,14 +612,18 @@ if st.session_state.goal:
     st.subheader("2. Tool stack")
 
     if st.session_state.suggested_stack:
-        st.write("**Suggested tools**")
+        st.markdown('<div class="small-muted">Suggested tools</div>', unsafe_allow_html=True)
+        st.markdown('<div class="inline-tags">', unsafe_allow_html=True)
         for tool in st.session_state.suggested_stack:
             st.markdown(f'<span class="tag">{tool}</span>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
     if st.session_state.alternative_stack:
         with st.expander("Show alternatives", expanded=False):
+            st.markdown('<div class="inline-tags">', unsafe_allow_html=True)
             for tool in st.session_state.alternative_stack:
                 st.markdown(f'<span class="tag">{tool}</span>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
 
     st.session_state.selected_stack = st.multiselect(
         "Choose the tools you want in this workflow",
@@ -523,14 +652,17 @@ if st.session_state.goal:
 if st.session_state.selected_stack:
     st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
     st.subheader("3. Connector modes")
-    st.markdown('<div class="small-muted">Live = API, Manual = human handoff, Demo = simulated connector.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="small-muted">Keep it practical: Live = API, Manual = human handoff, Demo = simulated connector.</div>', unsafe_allow_html=True)
 
     for tool in st.session_state.selected_stack:
+        st.markdown(f"**{tool}**", unsafe_allow_html=True)
+        st.markdown('<div class="compact-note">Choose how this tool participates right now.</div>', unsafe_allow_html=True)
         st.session_state.connector_modes[tool] = st.selectbox(
             f"Mode for {tool}",
             ["Live", "Manual", "Demo"],
             index=["Live", "Manual", "Demo"].index(st.session_state.connector_modes.get(tool, "Demo")),
-            key=f"mode_{tool}"
+            key=f"mode_{tool}",
+            label_visibility="collapsed"
         )
 
     st.markdown('</div>', unsafe_allow_html=True)
@@ -538,6 +670,7 @@ if st.session_state.selected_stack:
 if st.session_state.selected_stack:
     st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
     st.subheader("4. Objective")
+    st.markdown('<div class="small-muted">Describe the final result you want. Keep it outcome-oriented and specific.</div>', unsafe_allow_html=True)
 
     if not st.session_state.objective_widget and st.session_state.objective_input:
         st.session_state.objective_widget = st.session_state.objective_input
@@ -547,7 +680,7 @@ if st.session_state.selected_stack:
         key="objective_widget",
         placeholder="Example: Pitch deck for solution on impact of AI to reduce training timelines.",
         max_chars=3000,
-        height=120
+        height=118
     )
 
     st.session_state.objective_input = st.session_state.objective_widget
@@ -556,6 +689,7 @@ if st.session_state.selected_stack:
 if st.session_state.selected_stack:
     st.markdown('<div class="nexus-card">', unsafe_allow_html=True)
     st.subheader("5. Review and run")
+    st.markdown('<div class="small-muted">Review the starter workflow below. Only expand advanced editing if you need to fine-tune the handoffs.</div>', unsafe_allow_html=True)
 
     if not st.session_state.workflow_steps:
         st.session_state.workflow_steps = build_default_workflow(
@@ -567,9 +701,11 @@ if st.session_state.selected_stack:
         mode = st.session_state.connector_modes.get(step["tool"], "Demo")
         st.markdown('<div class="step-card">', unsafe_allow_html=True)
         st.write(f"**Step {step['order']}: {step['name']}**")
-        st.write(f"Tool: {step['tool']} | Mode: {mode}")
-        st.write(f"Purpose: {step['purpose']}")
-        st.write(f"Input source: {step['input_from']}")
+        st.markdown(
+            f"<div class='meta-row'><span>Tool: {step['tool']}</span><span>Mode: {mode}</span><span>Input: {step['input_from']}</span></div>",
+            unsafe_allow_html=True
+        )
+        st.write(step["purpose"])
         st.markdown('</div>', unsafe_allow_html=True)
 
     with st.expander("Advanced workflow editing", expanded=False):
@@ -591,6 +727,8 @@ if st.session_state.selected_stack:
 
         for idx, step in enumerate(st.session_state.workflow_steps):
             st.markdown('<div class="step-card">', unsafe_allow_html=True)
+            st.markdown(f"**Advanced edit: Step {idx + 1}**", unsafe_allow_html=True)
+
             step["name"] = st.text_input(
                 f"Step {idx + 1} name",
                 value=step["name"],
@@ -606,7 +744,7 @@ if st.session_state.selected_stack:
                 f"Purpose for step {idx + 1}",
                 value=step["purpose"],
                 key=f"purpose_{step['id']}",
-                height=100
+                height=96
             )
 
             input_choices = ["User objective"] + [f"Step {i}" for i in range(1, len(st.session_state.workflow_steps) + 1) if i != idx + 1]
@@ -671,7 +809,7 @@ if st.session_state.final_artifact:
     st.text_area(
         "Artifact preview",
         value=st.session_state.final_artifact,
-        height=180,
+        height=170,
         disabled=True
     )
     st.markdown('</div>', unsafe_allow_html=True)
